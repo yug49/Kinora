@@ -28,12 +28,85 @@ export const JournalEntries = () => {
         throw new Error('MetaMask not found');
       }
 
+      console.log('=== Journal Recording Debug Info ===');
+      console.log('Network Chain ID:', await window.ethereum.request({ method: 'eth_chainId' }));
+      console.log('Account:', account);
+      console.log('Memory text:', newEntry);
+      console.log('Contract Address:', CONTRACT_ADDRESS);
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
+      
+      // Check network
+      const network = await provider.getNetwork();
+      console.log('Provider Network:', network.chainId.toString());
+      
+      if (network.chainId !== BigInt(443)) {
+        throw new Error(`Wrong network. Expected TEN Network (443), got ${network.chainId}`);
+      }
+
+      // Check contract exists
+      const contractCode = await provider.getCode(CONTRACT_ADDRESS);
+      console.log('Contract code length:', contractCode.length);
+      
+      if (contractCode === '0x') {
+        throw new Error('Contract not deployed at this address on TEN Network');
+      }
+
+      // Check account balance
+      const balance = await provider.getBalance(account!);
+      const balanceEth = ethers.formatEther(balance);
+      console.log('Account balance:', balanceEth, 'ETH');
+      
+      if (balance === 0n) {
+        throw new Error('Insufficient ETH balance for transaction fees');
+      }
+
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-      // Call registerEntry function
-      const tx = await contract.registerEntry(newEntry);
+      // Try different approaches for the contract call
+      let tx;
+      
+      try {
+        // Method 1: Standard contract call
+        console.log('Attempting standard contract call...');
+        const gasEstimate = await contract.registerEntry.estimateGas(newEntry);
+        console.log('Gas estimate:', gasEstimate.toString());
+        
+        tx = await contract.registerEntry(newEntry, {
+          gasLimit: gasEstimate + (gasEstimate / 10n) // Add 10% buffer
+        });
+      } catch (estimateError) {
+        console.log('Standard call failed, trying alternative method...', estimateError);
+        
+        // Method 2: Direct transaction with function signature
+        const functionSignature = 'registerEntry(string)';
+        const functionSelector = ethers.id(functionSignature).slice(0, 10);
+        console.log('Function selector:', functionSelector);
+        
+        const encodedData = contract.interface.encodeFunctionData('registerEntry', [newEntry]);
+        console.log('Encoded data:', encodedData);
+        
+        try {
+          const gasEstimate = await provider.estimateGas({
+            to: CONTRACT_ADDRESS,
+            data: encodedData,
+            from: account
+          });
+          console.log('Direct gas estimate:', gasEstimate.toString());
+          
+          tx = await signer.sendTransaction({
+            to: CONTRACT_ADDRESS,
+            data: encodedData,
+            gasLimit: gasEstimate + (gasEstimate / 10n)
+          });
+        } catch (directError) {
+          console.log('Direct call also failed:', directError);
+          throw new Error(`Contract call failed. The contract may not be properly deployed or the function signature may be incorrect. Original error: ${estimateError.message}`);
+        }
+      }
+      
+      console.log('Transaction submitted:', tx.hash);
       
       toast({
         title: "Recording Memory...",
@@ -42,6 +115,7 @@ export const JournalEntries = () => {
 
       // Wait for transaction confirmation
       const receipt = await tx.wait();
+      console.log('Transaction receipt:', receipt);
       
       toast({
         title: "Memory Recorded Successfully!",
@@ -53,9 +127,22 @@ export const JournalEntries = () => {
 
     } catch (error: any) {
       console.error('Recording error:', error);
+      
+      let errorMessage = error.message || 'Failed to record memory. Please try again.';
+      
+      if (error.message.includes('insufficient funds')) {
+        errorMessage = 'Insufficient ETH balance for transaction fees.';
+      } else if (error.message.includes('user rejected')) {
+        errorMessage = 'Transaction was rejected by user.';
+      } else if (error.message.includes('Contract not deployed')) {
+        errorMessage = 'Smart contract not found on TEN Network. Please verify the contract address.';
+      } else if (error.message.includes('Wrong network')) {
+        errorMessage = 'Please switch to TEN Network (Chain ID 443).';
+      }
+      
       toast({
         title: "Recording Failed",
-        description: error.message || 'Failed to record memory. Please try again.',
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
