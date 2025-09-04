@@ -27,6 +27,13 @@ const CONTRACT_ABI = [
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_owner", "type": "address"}],
+    "name": "getTokenIdsOfAnOnwer",
+    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
@@ -48,21 +55,53 @@ export const MintingForm = () => {
       return;
     }
     
+    if (!imageUrl || (mintTo === 'other' && !customAddress)) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate custom address format if minting to another address
+    if (mintTo === 'other') {
+      try {
+        ethers.getAddress(customAddress);
+      } catch (error) {
+        toast({
+          title: "Invalid Address",
+          description: "Please enter a valid Ethereum address",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setIsMinting(true);
     
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
+      
+      // First check if contract exists by getting the code
+      const contractCode = await provider.getCode(CONTRACT_ADDRESS);
+      if (contractCode === '0x') {
+        throw new Error('Contract not found at the specified address. Please verify the contract is deployed on TEN network.');
+      }
+
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
       let tx;
       
       if (mintTo === 'self') {
-        // Call mint(string memory _imageUrl)
-        tx = await contract['mint(string)'](imageUrl);
+        console.log('Calling mint(string) with imageUrl:', imageUrl);
+        // Call the single parameter mint function
+        tx = await contract.mint(imageUrl);
       } else {
-        // Call mint(address _to, string memory _imageUrl)
-        tx = await contract['mint(address,string)'](customAddress, imageUrl);
+        console.log('Calling mint(address,string) with address:', customAddress, 'imageUrl:', imageUrl);
+        // Call the two parameter mint function  
+        tx = await contract.mint(customAddress, imageUrl);
       }
 
       toast({
@@ -71,23 +110,40 @@ export const MintingForm = () => {
       });
 
       // Wait for transaction confirmation
-      await tx.wait();
+      const receipt = await tx.wait();
+      
+      if (receipt.status === 1) {
+        toast({
+          title: "NFT Minted Successfully!",
+          description: "Your AI NFT has been created on the blockchain",
+        });
 
-      toast({
-        title: "NFT Minted Successfully!",
-        description: "Your AI NFT has been created on the blockchain",
-      });
-
-      // Reset form
-      setImageUrl('');
-      setCustomAddress('');
-      setMintTo('self');
+        // Reset form
+        setImageUrl('');
+        setCustomAddress('');
+        setMintTo('self');
+      } else {
+        throw new Error('Transaction failed');
+      }
       
     } catch (error: any) {
       console.error('Minting error:', error);
+      
+      let errorMessage = "Failed to mint NFT";
+      
+      if (error.code === 'CALL_EXCEPTION') {
+        errorMessage = "Contract call failed. The contract may not be deployed on this network or there may be insufficient gas.";
+      } else if (error.code === 'INSUFFICIENT_FUNDS') {
+        errorMessage = "Insufficient funds for gas fees";
+      } else if (error.code === 'USER_REJECTED') {
+        errorMessage = "Transaction was rejected by user";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Minting Failed",
-        description: error.message || "Failed to mint NFT",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
