@@ -35,15 +35,38 @@ export const useWallet = () => {
     }
   };
 
+  const detectProvider = async (): Promise<boolean> => {
+    if (window.ethereum) return true;
+    
+    // Wait for MetaMask to load (up to 3 seconds)
+    for (let i = 0; i < 30; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (window.ethereum) return true;
+    }
+    return false;
+  };
+
   const connectWallet = async () => {
-    if (!window.ethereum) {
-      setWallet(prev => ({ ...prev, error: 'MetaMask is not installed' }));
+    setWallet(prev => ({ ...prev, isConnecting: true, error: null }));
+
+    // Check if MetaMask is available or wait for it to load
+    const hasProvider = await detectProvider();
+    
+    if (!hasProvider) {
+      setWallet(prev => ({ 
+        ...prev, 
+        error: 'MetaMask is not installed. Please install MetaMask extension.',
+        isConnecting: false
+      }));
       return;
     }
 
-    setWallet(prev => ({ ...prev, isConnecting: true, error: null }));
-
     try {
+      // Double check window.ethereum is available
+      if (!window.ethereum) {
+        throw new Error('MetaMask provider not available');
+      }
+
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
