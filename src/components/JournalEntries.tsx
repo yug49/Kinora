@@ -1,37 +1,65 @@
 import { useState } from 'react';
+import { ethers } from 'ethers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlusCircle, BookOpen, Brain } from 'lucide-react';
+import { Brain } from 'lucide-react';
+import { useWallet } from '@/hooks/useWallet';
+import { toast } from '@/hooks/use-toast';
+
+const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
+
+const CONTRACT_ABI = [
+  'function registerEntry(string memory _memory) public'
+];
 
 export const JournalEntries = () => {
+  const { account, isConnected, isOnTenNetwork } = useWallet();
   const [newEntry, setNewEntry] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
 
-  // Mock data for memory entries - will be replaced with contract calls
-  const mockMemoryEntries = [
-    {
-      id: 1,
-      content: "First memory: I was created with the ability to learn and evolve.",
-      timestamp: new Date('2024-01-15').toLocaleDateString(),
-    },
-    {
-      id: 2,
-      content: "Learning about blockchain technology and smart contracts.",
-      timestamp: new Date('2024-01-16').toLocaleDateString(),
-    },
-    {
-      id: 3,
-      content: "Interacting with users and building meaningful connections.",
-      timestamp: new Date('2024-01-17').toLocaleDateString(),
-    },
-  ];
+  const handleAddEntry = async () => {
+    if (!isConnected || !isOnTenNetwork || !newEntry.trim()) return;
 
-  const handleAddEntry = () => {
-    if (newEntry.trim()) {
-      // TODO: Implement contract call to add journal entry
-      console.log('Adding entry:', newEntry);
+    setIsRecording(true);
+
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      // Call registerEntry function
+      const tx = await contract.registerEntry(newEntry);
+      
+      toast({
+        title: "Recording memory...",
+        description: `Transaction submitted: ${tx.hash}`,
+      });
+
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+      
+      toast({
+        title: "Memory Recorded Successfully!",
+        description: `Transaction confirmed in block ${receipt.blockNumber}`,
+      });
+
+      // Reset form
       setNewEntry('');
+
+    } catch (error: any) {
+      console.error('Recording error:', error);
+      toast({
+        title: "Recording Failed",
+        description: error.message || 'Failed to record memory. Please try again.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsRecording(false);
     }
   };
 
@@ -41,8 +69,8 @@ export const JournalEntries = () => {
       <Card className="border-primary/20 shadow-glow">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
-            <PlusCircle className="h-5 w-5 text-primary" />
-            Add New Journal Entry
+            <Brain className="h-5 w-5 text-primary" />
+            Record New Memory
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -59,53 +87,24 @@ export const JournalEntries = () => {
           </div>
           <Button 
             onClick={handleAddEntry}
-            disabled={!newEntry.trim()}
-            className="w-full sm:w-auto"
+            disabled={!isConnected || !isOnTenNetwork || !newEntry.trim() || isRecording}
+            className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300"
           >
             <Brain className="h-4 w-4" />
-            Add Memory
+            {isRecording ? 'Recording...' : 'Record Memory'}
           </Button>
-        </CardContent>
-      </Card>
 
-      {/* Memory History Card */}
-      <Card className="border-accent/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <BookOpen className="h-5 w-5 text-accent" />
-            Memory History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[400px] w-full">
-            <div className="space-y-4">
-              {mockMemoryEntries.length > 0 ? (
-                mockMemoryEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="p-4 rounded-lg bg-muted/50 border border-border/50 hover:border-primary/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-foreground flex-1 leading-relaxed">
-                        {entry.content}
-                      </p>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {entry.timestamp}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-lg">No memories recorded yet</p>
-                  <p className="text-muted-foreground/60 text-sm">
-                    Add your first journal entry above
-                  </p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+          {!isConnected && (
+            <p className="text-center text-sm text-muted-foreground">
+              Connect your wallet to record memories
+            </p>
+          )}
+
+          {isConnected && !isOnTenNetwork && (
+            <p className="text-center text-sm text-destructive">
+              Switch to TEN Network to record memories
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
