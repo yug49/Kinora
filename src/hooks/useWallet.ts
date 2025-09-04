@@ -1,0 +1,175 @@
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+
+export interface WalletState {
+  account: string | null;
+  balance: string | null;
+  chainId: number | null;
+  isConnected: boolean;
+  isConnecting: boolean;
+  error: string | null;
+}
+
+const TEN_CHAIN_ID = 443;
+
+export const useWallet = () => {
+  const [wallet, setWallet] = useState<WalletState>({
+    account: null,
+    balance: null,
+    chainId: null,
+    isConnected: false,
+    isConnecting: false,
+    error: null,
+  });
+
+  const updateBalance = async (account: string) => {
+    try {
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const balance = await provider.getBalance(account);
+        const balanceInEth = ethers.formatEther(balance);
+        setWallet(prev => ({ ...prev, balance: parseFloat(balanceInEth).toFixed(4) }));
+      }
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+    }
+  };
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      setWallet(prev => ({ ...prev, error: 'MetaMask is not installed' }));
+      return;
+    }
+
+    setWallet(prev => ({ ...prev, isConnecting: true, error: null }));
+
+    try {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
+
+      const chainId = await window.ethereum.request({
+        method: 'eth_chainId',
+      });
+
+      const account = accounts[0];
+      const numericChainId = parseInt(chainId, 16);
+
+      setWallet(prev => ({
+        ...prev,
+        account,
+        chainId: numericChainId,
+        isConnected: true,
+        isConnecting: false,
+      }));
+
+      await updateBalance(account);
+    } catch (error: any) {
+      setWallet(prev => ({
+        ...prev,
+        error: error.message || 'Failed to connect wallet',
+        isConnecting: false,
+      }));
+    }
+  };
+
+  const disconnectWallet = () => {
+    setWallet({
+      account: null,
+      balance: null,
+      chainId: null,
+      isConnected: false,
+      isConnecting: false,
+      error: null,
+    });
+  };
+
+  const switchToTenNetwork = async () => {
+    if (!window.ethereum) return;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${TEN_CHAIN_ID.toString(16)}` }],
+      });
+    } catch (error: any) {
+      if (error.code === 4902) {
+        // Chain not added to MetaMask
+        setWallet(prev => ({ ...prev, error: 'Please add TEN Network to your wallet manually' }));
+      } else {
+        setWallet(prev => ({ ...prev, error: 'Failed to switch network' }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({
+            method: 'eth_accounts',
+          });
+
+          if (accounts.length > 0) {
+            const chainId = await window.ethereum.request({
+              method: 'eth_chainId',
+            });
+
+            const account = accounts[0];
+            const numericChainId = parseInt(chainId, 16);
+
+            setWallet(prev => ({
+              ...prev,
+              account,
+              chainId: numericChainId,
+              isConnected: true,
+            }));
+
+            await updateBalance(account);
+          }
+        } catch (error) {
+          console.error('Error checking wallet connection:', error);
+        }
+      }
+    };
+
+    checkConnection();
+
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts: string[]) => {
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          setWallet(prev => ({ ...prev, account: accounts[0] }));
+          updateBalance(accounts[0]);
+        }
+      };
+
+      const handleChainChanged = (chainId: string) => {
+        const numericChainId = parseInt(chainId, 16);
+        setWallet(prev => ({ ...prev, chainId: numericChainId }));
+        
+        if (wallet.account) {
+          updateBalance(wallet.account);
+        }
+      };
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      return () => {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      };
+    }
+  }, []);
+
+  return {
+    ...wallet,
+    connectWallet,
+    disconnectWallet,
+    switchToTenNetwork,
+    isOnTenNetwork: wallet.chainId === TEN_CHAIN_ID,
+    TEN_CHAIN_ID,
+  };
+};

@@ -68,6 +68,20 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-card': 'var(--gradient-card)',
+				'gradient-hero': 'var(--gradient-hero)'
+			},
+			boxShadow: {
+				'glow': 'var(--shadow-glow)',
+				'card': 'var(--shadow-card)',
+				'accent': 'var(--shadow-accent)'
+			},
+			transitionProperty: {
+				'all': 'var(--transition-all)',
+				'glow': 'var(--transition-glow)'
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {
