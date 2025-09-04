@@ -3,7 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/Header';
 import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
-import { Sparkles, Images } from 'lucide-react';
+import { JournalEntries } from '@/components/JournalEntries';
+import { Sparkles, Images, BookOpen } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -29,7 +30,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
         <Tabs defaultValue="mint" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-12">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto mb-12">
             <TabsTrigger value="mint" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
               Mint NFT
@@ -37,6 +38,10 @@ const Index = () => {
             <TabsTrigger value="gallery" className="flex items-center gap-2">
               <Images className="h-4 w-4" />
               Your NFTs
+            </TabsTrigger>
+            <TabsTrigger value="journal" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Journal
             </TabsTrigger>
           </TabsList>
           
@@ -48,6 +53,12 @@ const Index = () => {
           
           <TabsContent value="gallery" className="space-y-8">
             <NFTGallery />
+          </TabsContent>
+          
+          <TabsContent value="journal" className="space-y-8">
+            <div className="max-w-4xl mx-auto">
+              <JournalEntries />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
