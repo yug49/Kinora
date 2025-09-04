@@ -97,6 +97,17 @@ export const MintingForm = () => {
 
   const isFormValid = imageUrl && (mintTo === 'self' || customAddress);
 
+  // Debug logging
+  console.log('Wallet State:', { 
+    isConnected, 
+    isOnTenNetwork, 
+    account, 
+    imageUrl: !!imageUrl, 
+    mintTo, 
+    customAddress: !!customAddress, 
+    isFormValid 
+  });
+
   return (
     <Card className="bg-gradient-card border-border/50 shadow-card">
       <CardHeader className="text-center">
