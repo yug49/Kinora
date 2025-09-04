@@ -46,10 +46,20 @@ export const MintingForm = () => {
   const [isMinting, setIsMinting] = useState(false);
 
   const handleMint = async () => {
-    if (!isConnected || !isOnTenNetwork || !window.ethereum) {
+    if (!isConnected || !window.ethereum) {
       toast({
-        title: "Connection Error",
-        description: "Please connect your wallet and switch to TEN network",
+        title: "Wallet Not Connected",
+        description: "Please connect your MetaMask wallet first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check network first
+    if (!isOnTenNetwork) {
+      toast({
+        title: "Wrong Network",
+        description: "Please switch to TEN Network (Chain ID 443) to mint NFTs",
         variant: "destructive"
       });
       return;
@@ -82,26 +92,56 @@ export const MintingForm = () => {
     
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      
+      console.log('Current network:', network.chainId.toString());
+      
+      // Double-check we're on TEN network
+      if (network.chainId !== BigInt(443)) {
+        throw new Error(`Wrong network! Connected to chain ${network.chainId}, but TEN Network requires chain 443`);
+      }
+      
       const signer = await provider.getSigner();
       
-      // First check if contract exists by getting the code
+      // Check if contract exists by getting the code
+      console.log('Checking contract at address:', CONTRACT_ADDRESS);
       const contractCode = await provider.getCode(CONTRACT_ADDRESS);
-      if (contractCode === '0x') {
-        throw new Error('Contract not found at the specified address. Please verify the contract is deployed on TEN network.');
+      console.log('Contract code length:', contractCode.length);
+      
+      if (contractCode === '0x' || contractCode.length <= 2) {
+        throw new Error(`Contract not deployed at address ${CONTRACT_ADDRESS} on TEN Network (Chain ID 443). Please verify the contract address.`);
       }
 
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
       let tx;
       
+      // Check account balance first
+      const balance = await provider.getBalance(await signer.getAddress());
+      console.log('Account balance:', ethers.formatEther(balance), 'ETH');
+      
+      if (balance === 0n) {
+        throw new Error('Insufficient ETH balance for gas fees. Please add ETH to your wallet on TEN Network.');
+      }
+      
       if (mintTo === 'self') {
         console.log('Calling mint(string) with imageUrl:', imageUrl);
-        // Call the single parameter mint function
-        tx = await contract.mint(imageUrl);
+        // Estimate gas first
+        const gasEstimate = await contract.mint.estimateGas(imageUrl);
+        console.log('Gas estimate:', gasEstimate.toString());
+        
+        tx = await contract.mint(imageUrl, {
+          gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
+        });
       } else {
         console.log('Calling mint(address,string) with address:', customAddress, 'imageUrl:', imageUrl);
-        // Call the two parameter mint function  
-        tx = await contract.mint(customAddress, imageUrl);
+        // Estimate gas first
+        const gasEstimate = await contract.mint.estimateGas(customAddress, imageUrl);
+        console.log('Gas estimate:', gasEstimate.toString());
+        
+        tx = await contract.mint(customAddress, imageUrl, {
+          gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
+        });
       }
 
       toast({
@@ -115,7 +155,7 @@ export const MintingForm = () => {
       if (receipt.status === 1) {
         toast({
           title: "NFT Minted Successfully!",
-          description: "Your AI NFT has been created on the blockchain",
+          description: "Your AI NFT has been created on the TEN Network",
         });
 
         // Reset form
@@ -132,11 +172,15 @@ export const MintingForm = () => {
       let errorMessage = "Failed to mint NFT";
       
       if (error.code === 'CALL_EXCEPTION') {
-        errorMessage = "Contract call failed. The contract may not be deployed on this network or there may be insufficient gas.";
+        errorMessage = "Contract call failed. The contract may not be properly deployed on TEN Network or the function signature may be incorrect.";
       } else if (error.code === 'INSUFFICIENT_FUNDS') {
-        errorMessage = "Insufficient funds for gas fees";
-      } else if (error.code === 'USER_REJECTED') {
+        errorMessage = "Insufficient ETH for gas fees on TEN Network";
+      } else if (error.code === 'USER_REJECTED' || error.code === 4001) {
         errorMessage = "Transaction was rejected by user";
+      } else if (error.message.includes('Wrong network')) {
+        errorMessage = error.message;
+      } else if (error.message.includes('Contract not deployed')) {
+        errorMessage = error.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
