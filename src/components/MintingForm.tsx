@@ -1,37 +1,91 @@
 import { useState } from 'react';
+import { ethers } from 'ethers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sparkles, User, Link } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
+import { toast } from '@/hooks/use-toast';
+
+const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
+
+const CONTRACT_ABI = [
+  'function mint(string memory _imageUrl) public',
+  'function mint(address _to, string memory _imageUrl) public'
+];
 
 export const MintingForm = () => {
   const { account, isConnected, isOnTenNetwork } = useWallet();
   const [mintTo, setMintTo] = useState<'self' | 'other'>('self');
   const [customAddress, setCustomAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [initialMemory, setInitialMemory] = useState('');
   const [isMinting, setIsMinting] = useState(false);
 
   const handleMint = async () => {
-    if (!isConnected || !isOnTenNetwork) return;
-    
+    if (!isConnected || !isOnTenNetwork || !imageUrl) return;
+
     setIsMinting(true);
-    // TODO: Implement actual minting logic
-    setTimeout(() => {
-      setIsMinting(false);
+
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      let tx;
+      
+      if (mintTo === 'self') {
+        // Call mint(string memory _imageUrl)
+        tx = await contract.mint(imageUrl);
+        toast({
+          title: "Minting to yourself...",
+          description: `Transaction submitted: ${tx.hash}`,
+        });
+      } else {
+        // Validate address
+        if (!ethers.isAddress(customAddress)) {
+          throw new Error('Invalid recipient address');
+        }
+        
+        // Call mint(address _to, string memory _imageUrl)
+        tx = await contract.mint(customAddress, imageUrl);
+        toast({
+          title: "Minting to recipient...",
+          description: `Transaction submitted: ${tx.hash}`,
+        });
+      }
+
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+      
+      toast({
+        title: "NFT Minted Successfully!",
+        description: `Transaction confirmed in block ${receipt.blockNumber}`,
+      });
+
       // Reset form
       setImageUrl('');
-      setInitialMemory('');
       setCustomAddress('');
       setMintTo('self');
-    }, 2000);
+
+    } catch (error: any) {
+      console.error('Minting error:', error);
+      toast({
+        title: "Minting Failed",
+        description: error.message || 'Failed to mint NFT. Please try again.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsMinting(false);
+    }
   };
 
-  const isFormValid = imageUrl && initialMemory && (mintTo === 'self' || customAddress);
+  const isFormValid = imageUrl && (mintTo === 'self' || customAddress);
 
   return (
     <Card className="bg-gradient-card border-border/50 shadow-card">
@@ -41,7 +95,7 @@ export const MintingForm = () => {
           Mint Your AI NFT
         </CardTitle>
         <CardDescription>
-          Create a new Confidential Intelligent NFT with custom memory
+          Create a new Confidential Intelligent NFT
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -98,19 +152,6 @@ export const MintingForm = () => {
           />
         </div>
 
-        {/* Initial Memory */}
-        <div className="space-y-2">
-          <Label htmlFor="initial-memory" className="text-base font-medium">
-            Initial Memory
-          </Label>
-          <Textarea
-            id="initial-memory"
-            placeholder="Give your AI NFT its first memory or personality trait..."
-            value={initialMemory}
-            onChange={(e) => setInitialMemory(e.target.value)}
-            className="min-h-[100px]"
-          />
-        </div>
 
         {/* Mint Button */}
         <Button
