@@ -75,11 +75,22 @@ export const MintingForm = () => {
 
     } catch (error: any) {
       console.error('Minting error:', error);
-      toast({
-        title: "Minting Failed",
-        description: error.message || 'Failed to mint NFT. Please try again.',
-        variant: "destructive",
-      });
+      
+      // Check for account registration error specific to TEN network
+      if (error.message?.includes('not registered to current user') || 
+          error.info?.error?.data?.message?.includes('not registered to current user')) {
+        toast({
+          title: "Account Not Registered",
+          description: "Your wallet address needs to be registered with TEN Network first. Please visit the TEN Network documentation to register your account.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Minting Failed",
+          description: error.message || 'Failed to mint NFT. Please try again.',
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsMinting(false);
     }
