@@ -75,13 +75,19 @@ export const MintingForm = () => {
 
     } catch (error: any) {
       console.error('Minting error:', error);
+      console.error('Error structure:', JSON.stringify(error, null, 2));
       
-      // Check for account registration error specific to TEN network
-      if (error.message?.includes('not registered to current user') || 
-          error.info?.error?.data?.message?.includes('not registered to current user')) {
+      // Check for account registration error specific to TEN network (multiple possible paths)
+      const errorMessage = error.message || '';
+      const dataMessage = error.info?.error?.data?.message || '';
+      const cause = error.info?.error?.data?.cause || '';
+      
+      if (errorMessage.includes('not registered to current user') || 
+          dataMessage.includes('not registered to current user') ||
+          cause.includes('not registered to current user')) {
         toast({
-          title: "Account Not Registered",
-          description: "Your wallet address needs to be registered with TEN Network first. Please visit the TEN Network documentation to register your account.",
+          title: "Account Not Registered with TEN Network",
+          description: "Your wallet address needs to be registered with TEN Network first. Please visit the TEN Network documentation to register your account before minting.",
           variant: "destructive",
         });
       } else {
