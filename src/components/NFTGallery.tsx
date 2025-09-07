@@ -1,37 +1,85 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, MessageCircle } from 'lucide-react';
+import { Brain, MessageCircle, Loader2 } from 'lucide-react';
 import { AIChatModal } from './AIChatModal';
+import { useWallet } from '@/hooks/useWallet';
 
-// Mock NFT data
-const mockNFTs = [
-  {
-    id: '1',
-    name: 'Cosmic Dreamer #001',
-    image: 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=400&h=400&fit=crop&crop=center',
-    initialMemory: 'I am a cosmic entity that dreams of distant galaxies and helps users explore the universe.',
-    mintedAt: '2024-01-15',
-  },
-  {
-    id: '2',
-    name: 'Digital Sage #002',
-    image: 'https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=400&h=400&fit=crop&crop=center',
-    initialMemory: 'I am an ancient digital sage with knowledge spanning across all realms of technology.',
-    mintedAt: '2024-01-14',
-  },
-  {
-    id: '3',
-    name: 'Neon Guardian #003',
-    image: 'https://images.unsplash.com/photo-1635372722656-389f87a941b7?w=400&h=400&fit=crop&crop=center',
-    initialMemory: 'I am a guardian of the neon realm, protecting digital assets and guiding users through cyberspace.',
-    mintedAt: '2024-01-13',
-  },
+const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
+
+const CONTRACT_ABI = [
+  'function getTokenIdsOfAnOnwer(address _owner) public view returns(uint256[])',
+  'function getTokenIdToImageUrl(uint256 _tokenId) public view returns(string)',
+  'function name() public view returns(string)'
 ];
 
+interface NFT {
+  id: string;
+  name: string;
+  image: string;
+  initialMemory: string;
+  mintedAt: string;
+}
+
 export const NFTGallery = () => {
-  const [selectedNFT, setSelectedNFT] = useState<typeof mockNFTs[0] | null>(null);
+  const { account, isConnected, isOnTenNetwork } = useWallet();
+  const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
+  const [nfts, setNfts] = useState<NFT[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUserNFTs = async () => {
+    if (!isConnected || !isOnTenNetwork || !account) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+      // Get token IDs owned by user
+      const tokenIds = await contract.getTokenIdsOfAnOnwer(account);
+      
+      if (tokenIds.length === 0) {
+        setNfts([]);
+        return;
+      }
+
+      // Get collection name
+      const collectionName = await contract.name();
+
+      // Fetch image URLs for each token
+      const nftPromises = tokenIds.map(async (tokenId: any) => {
+        const imageUrl = await contract.getTokenIdToImageUrl(tokenId);
+        return {
+          id: tokenId.toString(),
+          name: `${collectionName} #${tokenId.toString()}`,
+          image: imageUrl,
+          initialMemory: 'I am an AI NFT companion ready to chat with you!',
+          mintedAt: 'Recently minted'
+        };
+      });
+
+      const fetchedNFTs = await Promise.all(nftPromises);
+      setNfts(fetchedNFTs);
+    } catch (err) {
+      console.error('Error fetching NFTs:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch NFTs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserNFTs();
+  }, [isConnected, isOnTenNetwork, account]);
 
   return (
     <div className="space-y-6">
@@ -40,8 +88,37 @@ export const NFTGallery = () => {
         <p className="text-muted-foreground">Click on any NFT to chat with your AI companion</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockNFTs.map((nft) => (
+      {!isConnected ? (
+        <div className="text-center py-12">
+          <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-foreground mb-2">Connect Your Wallet</h3>
+          <p className="text-muted-foreground">Connect your wallet to view your NFTs</p>
+        </div>
+      ) : !isOnTenNetwork ? (
+        <div className="text-center py-12">
+          <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-foreground mb-2">Switch to TEN Network</h3>
+          <p className="text-muted-foreground">Switch to TEN Network to view your NFTs</p>
+        </div>
+      ) : loading ? (
+        <div className="text-center py-12">
+          <Loader2 className="h-16 w-16 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <h3 className="text-xl font-semibold text-foreground mb-2">Loading NFTs...</h3>
+          <p className="text-muted-foreground">Fetching your collection from the blockchain</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-foreground mb-2">Error Loading NFTs</h3>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={fetchUserNFTs} className="mt-4">
+            Try Again
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {nfts.map((nft) => (
           <Card
             key={nft.id}
             className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-accent bg-gradient-card border-border/50 overflow-hidden"
@@ -70,24 +147,23 @@ export const NFTGallery = () => {
                   AI
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                {nft.initialMemory}
-              </p>
               <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>Minted</span>
-                <span>{nft.mintedAt}</span>
+                <span>Token ID</span>
+                <span>#{nft.id}</span>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+            ))}
+          </div>
 
-      {mockNFTs.length === 0 && (
-        <div className="text-center py-12">
-          <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-foreground mb-2">No NFTs Yet</h3>
-          <p className="text-muted-foreground">Mint your first AI NFT to get started!</p>
-        </div>
+          {nfts.length === 0 && (
+            <div className="text-center py-12">
+              <Brain className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">No NFTs Yet</h3>
+              <p className="text-muted-foreground">Mint your first AI NFT to get started!</p>
+            </div>
+          )}
+        </>
       )}
 
       <AIChatModal
