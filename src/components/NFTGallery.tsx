@@ -10,9 +10,16 @@ import { useWallet } from '@/hooks/useWallet';
 const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
 
 const CONTRACT_ABI = [
+  // Try multiple possible function names for getting owner tokens
+  'function tokensOfOwner(address owner) public view returns(uint256[])',
+  'function walletOfOwner(address owner) public view returns(uint256[])',
+  'function getTokensByOwner(address owner) public view returns(uint256[])',
   'function getTokenIdsOfAnOwner(address _owner) public view returns(uint256[])',
   'function getTokenIdToImageUrl(uint256 _tokenId) public view returns(string)',
-  'function name() public view returns(string)'
+  'function tokenURI(uint256 tokenId) public view returns(string)',
+  'function name() public view returns(string)',
+  'function totalSupply() public view returns(uint256)',
+  'function ownerOf(uint256 tokenId) public view returns(address)'
 ];
 
 interface NFT {
@@ -51,9 +58,9 @@ export const NFTGallery = () => {
 
       console.log('Contract initialized:', CONTRACT_ADDRESS);
 
-      // Get token IDs owned by user
-      console.log('Calling getTokenIdsOfAnOwner with address:', account);
-      const tokenIdsRaw = await contract.getTokenIdsOfAnOwner(account);
+      // Try the most common NFT function to get owner tokens
+      console.log('Calling tokensOfOwner with address:', account);
+      const tokenIdsRaw = await contract.tokensOfOwner(account);
       console.log('Raw token IDs returned:', tokenIdsRaw);
       console.log('Token IDs type:', typeof tokenIdsRaw);
       console.log('Token IDs constructor:', tokenIdsRaw.constructor.name);
