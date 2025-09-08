@@ -16,8 +16,6 @@ interface NFT {
   id: string;
   name: string;
   image: string;
-  initialMemory: string;
-  mintedAt: string;
 }
 
 interface AIChatModalProps {
@@ -56,7 +54,7 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
     setTimeout(() => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Hello! I'm your AI NFT companion. This is just a UI preview - the actual AI functionality will be implemented soon. I remember my initial memory: " + (nft?.initialMemory || ""),
+        content: "Hello! I'm your AI NFT companion. This is just a UI preview - the actual AI functionality will be implemented soon. I'm ready to chat with you!",
         sender: 'ai',
         timestamp: new Date().toLocaleTimeString(),
       };
@@ -100,19 +98,6 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
         {/* Chat Area */}
         <ScrollArea className="flex-1 px-4 py-2">
           <div className="space-y-4">
-            {/* Initial Memory Display */}
-            <div className="flex gap-3 mb-6">
-              <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4 text-accent" />
-              </div>
-              <div className="flex-1">
-                <div className="bg-accent/10 rounded-lg p-3">
-                  <p className="text-sm text-muted-foreground mb-1">Initial Memory:</p>
-                  <p className="text-sm">{nft.initialMemory}</p>
-                </div>
-              </div>
-            </div>
-
             {/* Messages */}
             {messages.map((message) => (
               <div

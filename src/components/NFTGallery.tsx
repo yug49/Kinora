@@ -19,8 +19,6 @@ interface NFT {
   id: string;
   name: string;
   image: string;
-  initialMemory: string;
-  mintedAt: string;
 }
 
 export const NFTGallery = () => {
@@ -86,9 +84,7 @@ export const NFTGallery = () => {
         const nft = {
           id: tokenId.toString(),
           name: `CINFT #${tokenId.toString()}`,
-          image: imageUrl,
-          initialMemory: 'I am an AI NFT companion ready to chat with you!',
-          mintedAt: 'Recently minted'
+          image: imageUrl
         };
         console.log('Created NFT object:', nft);
         return nft;
