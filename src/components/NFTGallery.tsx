@@ -10,7 +10,7 @@ import { useWallet } from '@/hooks/useWallet';
 const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
 
 const CONTRACT_ABI = [
-  'function getTokenIdsOfAnOnwer(address _owner) public view returns(uint256[])',
+  'function getTokenIdsOfAnOwner(address _owner) public view returns(uint256[])',
   'function getTokenIdToImageUrl(uint256 _tokenId) public view returns(string)',
   'function name() public view returns(string)'
 ];
@@ -52,8 +52,8 @@ export const NFTGallery = () => {
       console.log('Contract initialized:', CONTRACT_ADDRESS);
 
       // Get token IDs owned by user
-      console.log('Calling getTokenIdsOfAnOnwer with address:', account);
-      const tokenIdsRaw = await contract.getTokenIdsOfAnOnwer(account);
+      console.log('Calling getTokenIdsOfAnOwner with address:', account);
+      const tokenIdsRaw = await contract.getTokenIdsOfAnOwner(account);
       console.log('Raw token IDs returned:', tokenIdsRaw);
       console.log('Token IDs type:', typeof tokenIdsRaw);
       console.log('Token IDs constructor:', tokenIdsRaw.constructor.name);
