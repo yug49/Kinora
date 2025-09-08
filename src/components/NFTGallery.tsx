@@ -31,8 +31,12 @@ export const NFTGallery = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchUserNFTs = async () => {
-    if (!isConnected || !isOnTenNetwork || !account) return;
+    if (!isConnected || !isOnTenNetwork || !account) {
+      console.log('Conditions not met:', { isConnected, isOnTenNetwork, account });
+      return;
+    }
 
+    console.log('Fetching NFTs for account:', account);
     setLoading(true);
     setError(null);
 
@@ -44,33 +48,54 @@ export const NFTGallery = () => {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
+      console.log('Contract initialized:', CONTRACT_ADDRESS);
+
       // Get token IDs owned by user
+      console.log('Calling getTokenIdsOfAnOnwer with address:', account);
       const tokenIds = await contract.getTokenIdsOfAnOnwer(account);
+      console.log('Token IDs returned:', tokenIds);
       
       if (tokenIds.length === 0) {
+        console.log('No token IDs found for user');
         setNfts([]);
         return;
       }
 
+      console.log('Found', tokenIds.length, 'token IDs');
+
       // Get collection name
       const collectionName = await contract.name();
+      console.log('Collection name:', collectionName);
 
       // Fetch image URLs for each token
       const nftPromises = tokenIds.map(async (tokenId: any) => {
+        console.log('Fetching image for token ID:', tokenId.toString());
         const imageUrl = await contract.getTokenIdToImageUrl(tokenId);
-        return {
+        console.log('Image URL for token', tokenId.toString(), ':', imageUrl);
+        
+        const nft = {
           id: tokenId.toString(),
-          name: `${collectionName} #${tokenId.toString()}`,
+          name: `CINFT #${tokenId.toString()}`,
           image: imageUrl,
           initialMemory: 'I am an AI NFT companion ready to chat with you!',
           mintedAt: 'Recently minted'
         };
+        console.log('Created NFT object:', nft);
+        return nft;
       });
 
       const fetchedNFTs = await Promise.all(nftPromises);
+      console.log('All NFTs fetched:', fetchedNFTs);
       setNfts(fetchedNFTs);
     } catch (err) {
       console.error('Error fetching NFTs:', err);
+      console.error('Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        account,
+        isConnected,
+        isOnTenNetwork
+      });
       setError(err instanceof Error ? err.message : 'Failed to fetch NFTs');
     } finally {
       setLoading(false);
