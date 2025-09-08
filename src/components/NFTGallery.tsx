@@ -31,12 +31,15 @@ export const NFTGallery = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchUserNFTs = async () => {
+    console.log('=== NFT Fetch Debug ===');
+    console.log('Wallet state:', { isConnected, isOnTenNetwork, account });
+    
     if (!isConnected || !isOnTenNetwork || !account) {
-      console.log('Conditions not met:', { isConnected, isOnTenNetwork, account });
+      console.log('Conditions not met, skipping fetch');
       return;
     }
 
-    console.log('Fetching NFTs for account:', account);
+    console.log('Starting NFT fetch for account:', account);
     setLoading(true);
     setError(null);
 
@@ -52,8 +55,15 @@ export const NFTGallery = () => {
 
       // Get token IDs owned by user
       console.log('Calling getTokenIdsOfAnOnwer with address:', account);
-      const tokenIds = await contract.getTokenIdsOfAnOnwer(account);
-      console.log('Token IDs returned:', tokenIds);
+      const tokenIdsRaw = await contract.getTokenIdsOfAnOnwer(account);
+      console.log('Raw token IDs returned:', tokenIdsRaw);
+      console.log('Token IDs type:', typeof tokenIdsRaw);
+      console.log('Token IDs constructor:', tokenIdsRaw.constructor.name);
+      
+      // Convert Proxy/BigInt array to regular array of strings
+      const tokenIds = Array.from(tokenIdsRaw).map((id: any) => id);
+      console.log('Converted token IDs:', tokenIds);
+      console.log('Token IDs length:', tokenIds.length);
       
       if (tokenIds.length === 0) {
         console.log('No token IDs found for user');
@@ -103,7 +113,12 @@ export const NFTGallery = () => {
   };
 
   useEffect(() => {
-    fetchUserNFTs();
+    // Add a small delay to ensure wallet state is fully updated
+    const timer = setTimeout(() => {
+      fetchUserNFTs();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [isConnected, isOnTenNetwork, account]);
 
   return (
