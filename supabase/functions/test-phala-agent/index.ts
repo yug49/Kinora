@@ -33,7 +33,12 @@ serve(async (req) => {
     
     console.log('Making API call to Phala agent...');
     
-    // Make the API call
+    console.log('Testing API endpoint and model...');
+    console.log('Base URL:', 'https://api.redpill.ai/api/v1');
+    console.log('Model:', 'phala/gpt-oss-20b');
+    console.log('API Key (first 10 chars):', apiKey.substring(0, 10) + '...');
+    
+    // Make the API call (fixed the missing quote)
     const completion = await openai.chat.completions.create({
       model: 'phala/gpt-oss-20b',
       messages: [
