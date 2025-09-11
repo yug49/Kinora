@@ -45,9 +45,22 @@ export const PhalaChat = () => {
       }
 
       if (data.success) {
+        // Handle structured response from AI
+        let responseContent = '';
+        if (typeof data.response === 'object' && data.response !== null) {
+          // Format the structured AI response nicely
+          if (data.response.personality_traits && data.response.core_memories) {
+            responseContent = `**Personality Analysis:**\n${JSON.stringify(data.response.personality_traits, null, 2)}\n\n**Core Memories:**\n${data.response.core_memories.map((memory: string, index: number) => `${index + 1}. ${memory}`).join('\n')}`;
+          } else {
+            responseContent = JSON.stringify(data.response, null, 2);
+          }
+        } else {
+          responseContent = String(data.response);
+        }
+
         const botMessage: Message = {
           id: (Date.now() + 1).toString(),
-          content: data.response,
+          content: responseContent,
           sender: 'bot',
           timestamp: new Date(),
         };
