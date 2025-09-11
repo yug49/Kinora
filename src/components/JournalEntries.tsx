@@ -7,10 +7,13 @@ import { Brain } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from '@/hooks/use-toast';
 
-const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
+const CONTRACT_ADDRESS = '0x0b7BD780e703311B7c76C4658a91871861Eed89c';
 
 const CONTRACT_ABI = [
-  'function registerEntry(string memory _memory) public'
+  'function registerEntry(string memory _memory) public returns (bytes32)',
+  'function getTokenIdsOfAnOwner(address _owner) public view returns (uint256[] memory)',
+  'function balanceOf(address owner) public view returns (uint256)',
+  'function ownerOf(uint256 tokenId) public view returns (address)'
 ];
 
 export const JournalEntries = () => {

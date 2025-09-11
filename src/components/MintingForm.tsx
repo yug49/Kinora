@@ -9,11 +9,16 @@ import { Sparkles, User, Link } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from '@/hooks/use-toast';
 
-const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
+const CONTRACT_ADDRESS = '0x0b7BD780e703311B7c76C4658a91871861Eed89c';
 
 const CONTRACT_ABI = [
   'function mint(string memory _imageUrl) public',
-  'function mint(address _to, string memory _imageUrl) public'
+  'function mint(address _to, string memory _imageUrl) public',
+  'function getTokenIdsOfAnOwner(address _owner) public view returns (uint256[] memory)',
+  'function getTokenIdToImageUrl(uint256 _tokenId) public view returns (string memory)',
+  'function name() public view returns (string memory)',
+  'function ownerOf(uint256 tokenId) public view returns (address)',
+  'function balanceOf(address owner) public view returns (uint256)'
 ];
 
 export const MintingForm = () => {

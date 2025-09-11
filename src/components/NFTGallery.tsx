@@ -7,12 +7,19 @@ import { Brain, MessageCircle, Loader2 } from 'lucide-react';
 import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
 
-const CONTRACT_ADDRESS = '0x90EE12C568a54C922609C49A46a352ae3e98E20B';
+const CONTRACT_ADDRESS = '0x0b7BD780e703311B7c76C4658a91871861Eed89c';
 
 const CONTRACT_ABI = [
-  'function getTokenIdsOfAnOnwer(address _owner) public view returns(uint256[])',
-  'function getTokenIdToImageUrl(uint256 _tokenId) public view returns(string)',
-  'function name() public view returns(string)'
+  'function getTokenIdsOfAnOwner(address _owner) public view returns (uint256[] memory)',
+  'function getTokenIdToImageUrl(uint256 _tokenId) public view returns (string memory)',
+  'function name() public view returns (string memory)',
+  'function mint(string memory _imageUrl) public',
+  'function mint(address _to, string memory _imageUrl) public',
+  'function ownerOf(uint256 tokenId) public view returns (address)',
+  'function balanceOf(address owner) public view returns (uint256)',
+  'function getMinter(uint256 tokenId) public view returns (address)',
+  'function registerEntry(string memory _memory) public returns (bytes32)',
+  'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32)'
 ];
 
 interface NFT {
@@ -52,8 +59,8 @@ export const NFTGallery = () => {
       console.log('Contract initialized:', CONTRACT_ADDRESS);
 
       // Get token IDs owned by user
-      console.log('Calling getTokenIdsOfAnOnwer with address:', account);
-      const tokenIdsRaw = await contract.getTokenIdsOfAnOnwer(account);
+      console.log('Calling getTokenIdsOfAnOwner with address:', account);
+      const tokenIdsRaw = await contract.getTokenIdsOfAnOwner(account);
       console.log('Raw token IDs returned:', tokenIdsRaw);
       console.log('Token IDs type:', typeof tokenIdsRaw);
       console.log('Token IDs constructor:', tokenIdsRaw.constructor.name);
