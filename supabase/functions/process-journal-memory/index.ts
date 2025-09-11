@@ -189,13 +189,60 @@ ${JSON.stringify(agentInput)}`;
       parsedOutput = { error: "Agent response was not valid JSON", rawResponse: agentOutput };
     }
 
+    // Step 6: Store core memories to IPFS
+    console.log('💾 Step 6 Started: Storing core memories to IPFS...');
+    
+    let newCid = '';
+    if (parsedOutput.core_memories && Array.isArray(parsedOutput.core_memories)) {
+      try {
+        const coreMemoriesData = parsedOutput.core_memories.join('\n');
+        
+        const pinataJWT = Deno.env.get('PINATA_JWT');
+        if (!pinataJWT) {
+          throw new Error('PINATA_JWT not configured');
+        }
+
+        // Create FormData for Pinata upload
+        const formData = new FormData();
+        const blob = new Blob([coreMemoriesData], { type: 'text/plain' });
+        formData.append('file', blob, 'core_memories.txt');
+        formData.append('pinataMetadata', JSON.stringify({
+          name: `core_memories_${userAddress}_${Date.now()}.txt`
+        }));
+
+        const uploadResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${pinataJWT}`,
+          },
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Pinata upload failed: ${uploadResponse.status}`);
+        }
+
+        const uploadData = await uploadResponse.json();
+        newCid = uploadData.IpfsHash;
+        console.log('✅ Step 6 Complete: Core memories stored to IPFS');
+        console.log('New CID:', newCid);
+      } catch (ipfsError) {
+        console.error('❌ Step 6 Failed: IPFS upload error:', ipfsError);
+        throw new Error(`Failed to store core memories to IPFS: ${ipfsError.message}`);
+      }
+    } else {
+      console.log('⚠️ Step 6 Skipped: No valid core_memories found in AI output');
+    }
+
     console.log('🎉 All steps completed successfully!');
     
     return new Response(JSON.stringify({
       success: true,
       result: parsedOutput,
+      newCid: newCid,
       metadata: {
         cid: cid,
+        newCid: newCid,
         oldMemoriesLength: oldMemories.length,
         newMemoryLength: newMemory.length,
         timestamp: new Date().toISOString()

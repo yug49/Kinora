@@ -57,13 +57,57 @@ export const JournalEntries = () => {
       console.log('✅ Edge function response received:', data);
 
       if (data.success) {
-        console.log('🎉 Memory processing completed successfully!');
+        console.log('✅ Step 6 Complete: Memory processing completed successfully!');
         console.log('📊 Final agent output:', data.result);
         console.log('📋 Metadata:', data.metadata);
+        console.log('🆔 New CID for core memories:', data.newCid);
+        
+        // Step 7: Register entry with user's wallet
+        console.log('📝 Step 7 Started: Registering entry with user wallet...');
+        
+        if (!window.ethereum) {
+          throw new Error('MetaMask not found');
+        }
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+        console.log('📞 Calling registerEntry contract function...');
+        const registerTx = await contract.registerEntry(newEntry);
+        console.log('📋 Register transaction sent:', registerTx.hash);
+        
+        console.log('⏳ Waiting for register transaction confirmation...');
+        const registerReceipt = await registerTx.wait();
+        console.log('✅ Step 7 Complete: Register transaction confirmed in block:', registerReceipt.blockNumber);
+        
+        // Extract requestId from transaction (it's the keccak256 hash of the memory)
+        const requestId = ethers.keccak256(ethers.toUtf8Bytes(newEntry));
+        console.log('🆔 Generated Request ID:', requestId);
+
+        // Step 8: Call fulfill-entry edge function
+        console.log('🔧 Step 8 Started: Fulfilling entry with traits agent...');
+        
+        const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke('fulfill-entry', {
+          body: {
+            requestId: requestId,
+            newCid: data.newCid,
+            personalityTraits: data.result.personality_traits
+          }
+        });
+
+        if (fulfillError) {
+          console.error('❌ Step 8 Failed: Fulfill entry error:', fulfillError);
+          throw new Error(fulfillError.message || 'Failed to fulfill entry');
+        }
+
+        console.log('✅ Step 8 Complete: Entry fulfilled successfully!');
+        console.log('📋 Fulfill transaction hash:', fulfillData.transactionHash);
+        console.log('📦 Fulfill block number:', fulfillData.blockNumber);
         
         toast({
-          title: "Memory Processed Successfully!",
-          description: "Your memory has been analyzed and personality traits updated. Check console for details.",
+          title: "Memory Processing Complete!",
+          description: "Memory analyzed, stored to IPFS, and personality traits updated on blockchain!",
         });
 
         // Reset form

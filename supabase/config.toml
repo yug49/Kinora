@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.process-journal-memory]
 verify_jwt = false
+
+[functions.fulfill-entry]
+verify_jwt = false
