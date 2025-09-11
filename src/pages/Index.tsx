@@ -5,7 +5,8 @@ import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
 import { JournalEntries } from '@/components/JournalEntries';
 import { TestPhalaAgent } from '@/components/TestPhalaAgent';
-import { Sparkles, Images, BookOpen, Settings } from 'lucide-react';
+import { PhalaChat } from '@/components/PhalaChat';
+import { Sparkles, Images, BookOpen, Settings, MessageSquare } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -30,8 +31,12 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
-        <Tabs defaultValue="mint" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto mb-12">
+        <Tabs defaultValue="chat" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 max-w-4xl mx-auto mb-12">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              AI Chat
+            </TabsTrigger>
             <TabsTrigger value="mint" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
               Mint NFT
@@ -49,6 +54,12 @@ const Index = () => {
               API Test
             </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="chat" className="space-y-8">
+            <div className="max-w-4xl mx-auto">
+              <PhalaChat />
+            </div>
+          </TabsContent>
           
           <TabsContent value="mint" className="space-y-8">
             <div className="max-w-2xl mx-auto">
