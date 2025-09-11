@@ -1,129 +1,115 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import OpenAI from "https://deno.land/x/openai@v4.24.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-console.log('Edge function starting...');
-
 serve(async (req) => {
-  console.log('Request received:', req.method);
+  console.log('=== EDGE FUNCTION STARTED ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
+    console.log('Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Starting Phala agent API test...');
+    // Test 1: Basic function working
+    console.log('Test 1: Basic function execution - OK');
     
-    // Get the API key from environment
+    // Test 2: Environment variable access
     const apiKey = Deno.env.get('TRAITS_AGENT_API_KEY');
-    console.log('API key check:', apiKey ? 'found' : 'missing');
+    console.log('Test 2: API Key check:', apiKey ? `Found (${apiKey.length} chars, starts with ${apiKey.substring(0, 4)}...)` : 'NOT FOUND');
     
     if (!apiKey) {
-      console.error('TRAITS_AGENT_API_KEY not found in environment');
-      throw new Error('API key not configured');
+      throw new Error('TRAITS_AGENT_API_KEY not found in environment variables');
     }
     
-    console.log('API key found, length:', apiKey.length);
-    console.log('API key preview:', apiKey.substring(0, 8) + '...');
+    // Test 3: Try a simple fetch to the Phala API to test connectivity
+    console.log('Test 3: Testing basic connectivity to Phala API...');
     
-    // Initialize OpenAI client with Phala network endpoint
-    console.log('Initializing OpenAI client...');
-    const openai = new OpenAI({
-      baseURL: 'https://api.redpill.ai/api/v1',
-      apiKey: apiKey,
+    const testResponse = await fetch('https://api.redpill.ai/api/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
     
-    console.log('Making API call to Phala agent...');
-    console.log('Base URL: https://api.redpill.ai/api/v1');
-    console.log('Model: phala/deepseek-chat-v3-0324');
+    console.log('API Response status:', testResponse.status);
+    console.log('API Response headers:', Object.fromEntries(testResponse.headers.entries()));
     
-    // Make the API call with the correct model from official Phala docs
-    const completion = await openai.chat.completions.create({
-      model: 'phala/deepseek-chat-v3-0324',
-      messages: [
-        {
-          role: 'user',
-          content: 'What is the meaning of life? Please answer in one sentence.',
-        },
-      ],
-      max_tokens: 50, // Limit tokens to keep costs low
-    });
+    if (!testResponse.ok) {
+      const errorText = await testResponse.text();
+      console.log('API Error response:', errorText);
+      throw new Error(`API request failed: ${testResponse.status} ${testResponse.statusText} - ${errorText}`);
+    }
     
-    console.log('API call successful!');
-    console.log('Response received:', completion ? 'yes' : 'no');
+    const modelsData = await testResponse.text(); // Get as text first to see what we receive
+    console.log('Models response (first 200 chars):', modelsData.substring(0, 200));
     
-    if (completion && completion.choices && completion.choices[0]) {
-      console.log('Message content:', completion.choices[0].message.content);
-      
-      const result = {
-        success: true,
-        message: completion.choices[0].message,
+    // Test 4: Try actual chat completion with raw fetch
+    console.log('Test 4: Testing chat completion with raw fetch...');
+    
+    const chatResponse = await fetch('https://api.redpill.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         model: 'phala/deepseek-chat-v3-0324',
-        timestamp: new Date().toISOString()
-      };
-
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } else {
-      console.error('Invalid response structure:', completion);
-      throw new Error('Invalid response from API');
-    }
-
-  } catch (error) {
-    console.error('Error in Phala agent test:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error status:', error.status);
+        messages: [
+          {
+            role: 'user',
+            content: 'Say "Hello from Phala!" and nothing else.',
+          },
+        ],
+        max_tokens: 20,
+      }),
+    });
     
-    if (error.stack) {
-      console.error('Error stack:', error.stack);
+    console.log('Chat response status:', chatResponse.status);
+    
+    if (!chatResponse.ok) {
+      const errorText = await chatResponse.text();
+      console.log('Chat API Error response:', errorText);
+      throw new Error(`Chat API request failed: ${chatResponse.status} ${chatResponse.statusText} - ${errorText}`);
     }
-
-    let errorMessage = error.message || 'Unknown error';
-    let suggestions = [];
-    let status = error.status || 'unknown';
-
-    // Provide specific guidance based on error type
-    if (error.status === 404) {
-      errorMessage = 'API endpoint not found - check API key and model name';
-      suggestions = [
-        'Verify your Phala API key is correct',
-        'Ensure you have sufficient funds ($5+) in your Phala account',
-        'Check that GPU TEE API is enabled in your dashboard'
-      ];
-    } else if (error.status === 401 || error.status === 403) {
-      errorMessage = 'Authentication failed - invalid API key';
-      suggestions = [
-        'Get API key from Phala Dashboard → Confidential AI API',
-        'Ensure the TRAITS_AGENT_API_KEY secret is properly set'
-      ];
-    } else if (error.status === 429) {
-      errorMessage = 'Rate limit exceeded or insufficient credits';
-      suggestions = [
-        'Wait before retrying',
-        'Add more funds to your Phala account'
-      ];
-    }
-
-    const errorResult = {
-      success: false,
-      error: errorMessage,
-      originalError: error.message,
-      status: status,
-      suggestions: suggestions,
+    
+    const chatData = await chatResponse.json();
+    console.log('Chat response:', JSON.stringify(chatData, null, 2));
+    
+    const result = {
+      success: true,
+      tests_passed: ['basic_function', 'api_key_found', 'api_connectivity', 'chat_completion'],
+      api_key_length: apiKey.length,
+      models_response_preview: modelsData.substring(0, 100),
+      chat_response: chatData,
       timestamp: new Date().toISOString()
     };
 
-    console.log('Returning error response:', errorResult);
+    console.log('=== ALL TESTS PASSED ===');
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('=== ERROR OCCURRED ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+
+    const errorResult = {
+      success: false,
+      error: error.message,
+      error_name: error.name,
+      timestamp: new Date().toISOString()
+    };
 
     return new Response(JSON.stringify(errorResult), {
       status: 500,
@@ -131,5 +117,3 @@ serve(async (req) => {
     });
   }
 });
-
-console.log('Edge function setup complete');
