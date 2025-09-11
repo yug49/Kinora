@@ -25,40 +25,58 @@ export const JournalEntries = () => {
     if (!isConnected || !isOnTenNetwork || !newEntry.trim()) return;
 
     setIsRecording(true);
+    console.log('🚀 Starting journal memory upload flow...');
 
     try {
-      if (!window.ethereum) {
-        throw new Error('MetaMask not found');
+      console.log('📝 Step 1: User entered new memory');
+      console.log('Memory content:', newEntry);
+      console.log('User account:', account);
+
+      toast({
+        title: "Processing memory...",
+        description: "Analyzing your memory and updating personality traits...",
+      });
+
+      // Call the process-journal-memory edge function
+      console.log('🔄 Calling process-journal-memory edge function...');
+      
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data, error } = await supabase.functions.invoke('process-journal-memory', {
+        body: {
+          newMemory: newEntry,
+          userAddress: account
+        }
+      });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw new Error(error.message || 'Failed to process memory');
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      console.log('✅ Edge function response received:', data);
 
-      // Call registerEntry function
-      const tx = await contract.registerEntry(newEntry);
-      
-      toast({
-        title: "Recording memory...",
-        description: `Transaction submitted: ${tx.hash}`,
-      });
+      if (data.success) {
+        console.log('🎉 Memory processing completed successfully!');
+        console.log('📊 Final agent output:', data.result);
+        console.log('📋 Metadata:', data.metadata);
+        
+        toast({
+          title: "Memory Processed Successfully!",
+          description: "Your memory has been analyzed and personality traits updated. Check console for details.",
+        });
 
-      // Wait for transaction confirmation
-      const receipt = await tx.wait();
-      
-      toast({
-        title: "Memory Recorded Successfully!",
-        description: `Transaction confirmed in block ${receipt.blockNumber}`,
-      });
-
-      // Reset form
-      setNewEntry('');
+        // Reset form
+        setNewEntry('');
+      } else {
+        throw new Error(data.error || 'Unknown error occurred');
+      }
 
     } catch (error: any) {
-      console.error('Recording error:', error);
+      console.error('❌ Memory processing failed:', error);
       toast({
-        title: "Recording Failed",
-        description: error.message || 'Failed to record memory. Please try again.',
+        title: "Processing Failed",
+        description: error.message || 'Failed to process memory. Please try again.',
         variant: "destructive",
       });
     } finally {
