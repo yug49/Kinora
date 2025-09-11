@@ -7,7 +7,7 @@ import { Brain } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from '@/hooks/use-toast';
 
-const CONTRACT_ADDRESS = '0x0b7BD780e703311B7c76C4658a91871861Eed89c';
+const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
 
 const CONTRACT_ABI = [
   'function registerEntry(string memory _memory) public returns (bytes32)',

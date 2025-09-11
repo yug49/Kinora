@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CONTRACT_ADDRESS = '0x0b7BD780e703311B7c76C4658a91871861Eed89c';
+const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
 const CONTRACT_ABI = [
   'function getMemory() public view returns (string memory, tuple(bool openness, bool conscientiousness, bool extraversion, bool agreeableness, bool neuroticism, bool achievement, bool compassion, bool creativity, bool security, bool adventure, bool knowledge, bool autonomy, bool community, bool skillsHobbiesFrequency, bool interestsKnowledgeFrequency, bool keyEntitiesFrequency))',
   'function registerEntry(string memory _memory) public returns (bytes32)'
