@@ -35,12 +35,12 @@ serve(async (req) => {
     
     console.log('Testing API endpoint and model...');
     console.log('Base URL:', 'https://api.redpill.ai/api/v1');
-    console.log('Model:', 'phala/gpt-oss-20b');
+    console.log('Model:', 'phala/deepseek-chat-v3-0324');
     console.log('API Key (first 10 chars):', apiKey.substring(0, 10) + '...');
     
-    // Make the API call (fixed the missing quote)
+    // Make the API call with correct model name from official docs
     const completion = await openai.chat.completions.create({
-      model: 'phala/gpt-oss-20b',
+      model: 'phala/deepseek-chat-v3-0324',
       messages: [
         {
           role: 'user',
