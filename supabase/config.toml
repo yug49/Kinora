@@ -1,10 +1,4 @@
 project_id = "kxombsamuzjwegdhwdve"
 
-[functions.test-phala-agent]
-verify_jwt = false
-
-[functions.test-simple]
-verify_jwt = false
-
 [functions.phala-chat]
 verify_jwt = false

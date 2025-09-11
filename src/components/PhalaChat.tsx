@@ -30,12 +30,13 @@ export const PhalaChat = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = inputMessage;
     setInputMessage('');
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('phala-chat', {
-        body: { message: inputMessage }
+        body: { message: currentMessage }
       });
 
       if (error) {

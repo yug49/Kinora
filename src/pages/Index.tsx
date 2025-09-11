@@ -4,9 +4,8 @@ import { Header } from '@/components/Header';
 import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
 import { JournalEntries } from '@/components/JournalEntries';
-import { TestPhalaAgent } from '@/components/TestPhalaAgent';
 import { PhalaChat } from '@/components/PhalaChat';
-import { Sparkles, Images, BookOpen, Settings, MessageSquare } from 'lucide-react';
+import { Sparkles, Images, BookOpen, MessageSquare } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -32,7 +31,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
         <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 max-w-4xl mx-auto mb-12">
+          <TabsList className="grid w-full grid-cols-4 max-w-4xl mx-auto mb-12">
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               AI Chat
@@ -48,10 +47,6 @@ const Index = () => {
             <TabsTrigger value="journal" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Journal
-            </TabsTrigger>
-            <TabsTrigger value="test" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              API Test
             </TabsTrigger>
           </TabsList>
           
@@ -74,12 +69,6 @@ const Index = () => {
           <TabsContent value="journal" className="space-y-8">
             <div className="max-w-4xl mx-auto">
               <JournalEntries />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="test" className="space-y-8">
-            <div className="max-w-4xl mx-auto">
-              <TestPhalaAgent />
             </div>
           </TabsContent>
         </Tabs>

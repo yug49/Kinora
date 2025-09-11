@@ -21,18 +21,28 @@ serve(async (req) => {
       throw new Error('TRAITS_AGENT_API_KEY not found');
     }
 
-    // Make request to Phala agent
-    const response = await fetch('https://api.phala.network/v1/chat', {
+    console.log('API Key found, length:', apiKey.length);
+
+    // Make request to Phala agent using the correct API format from docs
+    const requestBody = {
+      model: "phala/gpt-oss-20b",
+      messages: [
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+    };
+
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
+    const response = await fetch('https://api.redpill.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        message: message,
-        model: 'gpt-4',
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     console.log('Phala API response status:', response.status);
@@ -44,19 +54,19 @@ serve(async (req) => {
       throw new Error(`Phala API error: ${response.status} - ${errorText}`);
     }
 
-    // Get response text first to check if it's valid JSON
+    // Get the raw response text first
     const responseText = await response.text();
-    console.log('Phala raw response:', responseText);
+    console.log('Raw response text:', responseText);
 
+    // Try to parse as JSON
     let data;
     try {
       data = JSON.parse(responseText);
-      console.log('Phala parsed response:', data);
-    } catch (jsonError) {
-      console.error('Failed to parse JSON response:', jsonError);
-      console.error('Raw response was:', responseText);
+      console.log('Parsed response data:', JSON.stringify(data, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse JSON:', parseError);
+      console.log('Treating response as plain text:', responseText);
       
-      // If it's not JSON, treat the text as the response
       return new Response(JSON.stringify({
         success: true,
         response: responseText || 'Empty response from agent',
@@ -67,10 +77,47 @@ serve(async (req) => {
       });
     }
 
+    // Extract the message content from the OpenAI-compatible response
+    let aiResponse: string = '';
+
+    // Try OpenAI format first (standard format)
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+      aiResponse = data.choices[0].message.content;
+      console.log('Found response in OpenAI format:', aiResponse);
+    }
+    // Try other possible formats as fallbacks
+    else if (data.response) {
+      aiResponse = data.response;
+      console.log('Found response in data.response:', aiResponse);
+    }
+    else if (data.message) {
+      aiResponse = data.message;
+      console.log('Found response in data.message:', aiResponse);
+    }
+    else if (data.text) {
+      aiResponse = data.text;
+      console.log('Found response in data.text:', aiResponse);
+    }
+    else if (typeof data === 'string') {
+      aiResponse = data;
+      console.log('Response is a string:', aiResponse);
+    }
+
+    if (!aiResponse) {
+      console.error('No valid response found in data structure:', data);
+      aiResponse = 'No valid response found from agent';
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      response: data.response || data.message || data.choices?.[0]?.message?.content || 'No response from agent',
-      timestamp: new Date().toISOString()
+      response: aiResponse,
+      timestamp: new Date().toISOString(),
+      debug: {
+        hasChoices: !!data.choices,
+        choicesLength: data.choices?.length || 0,
+        firstChoiceKeys: data.choices?.[0] ? Object.keys(data.choices[0]) : [],
+        dataKeys: Object.keys(data || {}),
+      }
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
