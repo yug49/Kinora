@@ -29,7 +29,18 @@ serve(async (req) => {
     const traitsAgentPrivateKey = Deno.env.get('TRAITS_AGENT_PRIVATE_KEY');
     const traitsAgentRpcUrl = Deno.env.get('TRAITS_AGENT_RPC_URL');
     
+    console.log('🔍 Environment check:', {
+      hasPrivateKey: !!traitsAgentPrivateKey,
+      hasRpcUrl: !!traitsAgentRpcUrl,
+      privateKeyLength: traitsAgentPrivateKey?.length || 0,
+      rpcUrlLength: traitsAgentRpcUrl?.length || 0
+    });
+    
     if (!traitsAgentPrivateKey || !traitsAgentRpcUrl) {
+      console.error('❌ Missing environment variables:', {
+        TRAITS_AGENT_PRIVATE_KEY: !!traitsAgentPrivateKey,
+        TRAITS_AGENT_RPC_URL: !!traitsAgentRpcUrl
+      });
       throw new Error('TRAITS_AGENT_PRIVATE_KEY or TRAITS_AGENT_RPC_URL not configured');
     }
 
