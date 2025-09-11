@@ -35,18 +35,41 @@ serve(async (req) => {
       }),
     });
 
+    console.log('Phala API response status:', response.status);
+    console.log('Phala API response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Phala API error:', response.status, errorText);
       throw new Error(`Phala API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('Phala response:', data);
+    // Get response text first to check if it's valid JSON
+    const responseText = await response.text();
+    console.log('Phala raw response:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('Phala parsed response:', data);
+    } catch (jsonError) {
+      console.error('Failed to parse JSON response:', jsonError);
+      console.error('Raw response was:', responseText);
+      
+      // If it's not JSON, treat the text as the response
+      return new Response(JSON.stringify({
+        success: true,
+        response: responseText || 'Empty response from agent',
+        timestamp: new Date().toISOString()
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({
       success: true,
-      response: data.response || data.message || 'No response from agent',
+      response: data.response || data.message || data.choices?.[0]?.message?.content || 'No response from agent',
       timestamp: new Date().toISOString()
     }), {
       status: 200,
