@@ -32,33 +32,49 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
-        <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-6 max-w-6xl mx-auto mb-12">
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              AI Chat
-            </TabsTrigger>
-            <TabsTrigger value="ipfs" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              IPFS Test
-            </TabsTrigger>
-            <TabsTrigger value="mint" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Mint NFT
-            </TabsTrigger>
-            <TabsTrigger value="gallery" className="flex items-center gap-2">
-              <Images className="h-4 w-4" />
-              Your NFTs
-            </TabsTrigger>
-            <TabsTrigger value="journal" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Journal
-            </TabsTrigger>
-            <TabsTrigger value="crypto" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Encryption Test
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="mint" className="w-full">
+          {/* Main Application Tabs */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-foreground mb-4 text-center">Main Application</h2>
+            <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto mb-6">
+              <TabsTrigger value="mint" className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Mint NFT
+              </TabsTrigger>
+              <TabsTrigger value="gallery" className="flex items-center gap-2">
+                <Images className="h-4 w-4" />
+                Your NFTs
+              </TabsTrigger>
+              <TabsTrigger value="journal" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Journal
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* Testing/Development Tabs */}
+          <div className="mb-8">
+            <h2 className="text-lg font-medium text-muted-foreground mb-4 text-center">
+              Testing & Development 
+              <span className="block text-sm text-destructive mt-1">
+                (Development only - will be removed in production)
+              </span>
+            </h2>
+            <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto mb-6 border-2 border-dashed border-muted-foreground/30">
+              <TabsTrigger value="chat" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                AI Chat
+              </TabsTrigger>
+              <TabsTrigger value="ipfs" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                IPFS Test
+              </TabsTrigger>
+              <TabsTrigger value="crypto" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Encryption Test
+              </TabsTrigger>
+            </TabsList>
+          </div>
           
           <TabsContent value="chat" className="space-y-8">
             <div className="max-w-4xl mx-auto">
