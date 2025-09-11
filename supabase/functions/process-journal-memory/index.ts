@@ -56,13 +56,29 @@ serve(async (req) => {
           throw new Error('PINATA_JWT not configured');
         }
 
-        const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
-        const fetchResponse = await fetch(gatewayUrl);
+        // Use the ipfs-operations function to fetch and decrypt
+        const ipfsResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/ipfs-operations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${pinataJWT}`,
+          },
+          body: JSON.stringify({
+            operation: 'fetch',
+            cid: cid
+          })
+        });
         
-        if (fetchResponse.ok) {
-          oldMemories = await fetchResponse.text();
-          console.log('✅ Step 3 Complete: Old memories fetched from IPFS');
-          console.log('Old memories length:', oldMemories.length);
+        if (ipfsResponse.ok) {
+          const ipfsResult = await ipfsResponse.json();
+          if (ipfsResult.success) {
+            oldMemories = ipfsResult.content;
+            console.log('✅ Step 3 Complete: Old memories fetched and decrypted from IPFS');
+            console.log('Old memories length:', oldMemories.length);
+          } else {
+            console.log('⚠️ Step 3: IPFS fetch/decrypt failed:', ipfsResult.error);
+            oldMemories = '';
+          }
         } else {
           console.log('⚠️ Step 3: No existing memories found (empty CID or fetch failed)');
           oldMemories = '';
@@ -202,28 +218,30 @@ ${JSON.stringify(agentInput)}`;
           throw new Error('PINATA_JWT not configured');
         }
 
-        // Create FormData for Pinata upload
-        const formData = new FormData();
-        const blob = new Blob([coreMemoriesData], { type: 'text/plain' });
-        formData.append('file', blob, 'core_memories.txt');
-        formData.append('pinataMetadata', JSON.stringify({
-          name: `core_memories_${userAddress}_${Date.now()}.txt`
-        }));
-
-        const uploadResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        // Use the ipfs-operations function to encrypt and upload
+        const ipfsResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/ipfs-operations', {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${pinataJWT}`,
           },
-          body: formData,
+          body: JSON.stringify({
+            operation: 'upload',
+            data: coreMemoriesData
+          })
         });
 
-        if (!uploadResponse.ok) {
-          throw new Error(`Pinata upload failed: ${uploadResponse.status}`);
+        if (!ipfsResponse.ok) {
+          const errorText = await ipfsResponse.text();
+          throw new Error(`IPFS upload failed: ${ipfsResponse.status} ${errorText}`);
         }
 
-        const uploadData = await uploadResponse.json();
-        newCid = uploadData.IpfsHash;
+        const ipfsResult = await ipfsResponse.json();
+        if (!ipfsResult.success) {
+          throw new Error(`IPFS upload error: ${ipfsResult.error}`);
+        }
+
+        newCid = ipfsResult.cid;
         console.log('✅ Step 6 Complete: Core memories stored to IPFS');
         console.log('New CID:', newCid);
       } catch (ipfsError) {

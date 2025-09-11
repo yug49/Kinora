@@ -40,12 +40,39 @@ serve(async (req) => {
     }
 
     if (operation === 'upload') {
-      console.log('Uploading data to IPFS:', data);
+      console.log('Uploading data to IPFS - encrypting first...');
       
-      // Create a File object from the text data
-      const file = new Blob([data], { type: 'text/plain' });
+      // Step 1: Encrypt data using AES crypto function
+      const encryptResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/aes-crypto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pinataJWT}`, // Using JWT for internal auth
+        },
+        body: JSON.stringify({
+          operation: 'encrypt',
+          data: data
+        })
+      });
+
+      if (!encryptResponse.ok) {
+        const errorText = await encryptResponse.text();
+        console.error('AES encryption failed:', errorText);
+        throw new Error(`Encryption failed: ${encryptResponse.status} ${errorText}`);
+      }
+
+      const encryptResult = await encryptResponse.json();
+      if (!encryptResult.success) {
+        console.error('AES encryption error:', encryptResult.error);
+        throw new Error(`Encryption error: ${encryptResult.error}`);
+      }
+
+      console.log('Data encrypted successfully, original length:', encryptResult.originalLength, 'encrypted length:', encryptResult.encryptedLength);
+      
+      // Step 2: Create a File object from the encrypted data
+      const file = new Blob([encryptResult.result], { type: 'text/plain' });
       const formData = new FormData();
-      formData.append('file', file, 'data.txt');
+      formData.append('file', file, 'encrypted_data.txt');
       
       // Add metadata
       const pinataMetadata = JSON.stringify({
@@ -87,9 +114,9 @@ serve(async (req) => {
     }
 
     if (operation === 'fetch') {
-      console.log('Fetching data from IPFS with CID:', cid);
+      console.log('Fetching encrypted data from IPFS with CID:', cid);
       
-      // Use Pinata's gateway to fetch the content
+      // Step 1: Use Pinata's gateway to fetch the encrypted content
       const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
       
       const fetchResponse = await fetch(gatewayUrl);
@@ -99,8 +126,36 @@ serve(async (req) => {
         throw new Error(`Failed to fetch: ${fetchResponse.status}`);
       }
 
-      const content = await fetchResponse.text();
-      console.log('Fetched content:', content);
+      const encryptedContent = await fetchResponse.text();
+      console.log('Fetched encrypted content length:', encryptedContent.length);
+
+      // Step 2: Decrypt the content using AES crypto function
+      const decryptResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/aes-crypto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pinataJWT}`, // Using JWT for internal auth
+        },
+        body: JSON.stringify({
+          operation: 'decrypt',
+          data: encryptedContent
+        })
+      });
+
+      if (!decryptResponse.ok) {
+        const errorText = await decryptResponse.text();
+        console.error('AES decryption failed:', errorText);
+        throw new Error(`Decryption failed: ${decryptResponse.status} ${errorText}`);
+      }
+
+      const decryptResult = await decryptResponse.json();
+      if (!decryptResult.success) {
+        console.error('AES decryption error:', decryptResult.error);
+        throw new Error(`Decryption error: ${decryptResult.error}`);
+      }
+
+      const content = decryptResult.result;
+      console.log('Data decrypted successfully, encrypted length:', decryptResult.encryptedLength, 'decrypted length:', decryptResult.decryptedLength);
 
       return new Response(
         JSON.stringify({
