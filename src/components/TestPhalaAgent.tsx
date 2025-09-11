@@ -11,6 +11,24 @@ export const TestPhalaAgent = () => {
   const testPhalaAgent = async () => {
     try {
       setIsLoading(true);
+      console.log('Testing simple function first...');
+      
+      // Test simple function first
+      const { data: simpleData, error: simpleError } = await supabase.functions.invoke('test-simple');
+      
+      if (simpleError) {
+        console.error('Simple function error:', simpleError);
+        toast({
+          title: "Edge Function Infrastructure Issue",
+          description: "Basic edge function test failed - check Supabase setup",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('Simple test result:', simpleData);
+      
+      // Now test Phala agent
       console.log('Testing Phala agent API...');
       
       const { data, error } = await supabase.functions.invoke('test-phala-agent');
