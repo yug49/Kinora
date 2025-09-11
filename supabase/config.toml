@@ -1,1 +1,4 @@
 project_id = "kxombsamuzjwegdhwdve"
+
+[functions.test-phala-agent]
+verify_jwt = false
