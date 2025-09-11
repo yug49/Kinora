@@ -21,6 +21,7 @@ export const useWallet = () => {
     isConnecting: false,
     error: null,
   });
+  const [hasManuallyDisconnected, setHasManuallyDisconnected] = useState(false);
 
   const updateBalance = async (account: string) => {
     try {
@@ -48,6 +49,7 @@ export const useWallet = () => {
 
   const connectWallet = async () => {
     setWallet(prev => ({ ...prev, isConnecting: true, error: null }));
+    setHasManuallyDisconnected(false); // Clear the manual disconnect flag
 
     // Check if MetaMask is available or wait for it to load
     const hasProvider = await detectProvider();
@@ -97,6 +99,7 @@ export const useWallet = () => {
   };
 
   const disconnectWallet = () => {
+    setHasManuallyDisconnected(true); // Set flag to prevent auto-reconnection
     setWallet({
       account: null,
       balance: null,
@@ -127,7 +130,8 @@ export const useWallet = () => {
 
   useEffect(() => {
     const checkConnection = async () => {
-      if (window.ethereum) {
+      // Only auto-connect if user hasn't manually disconnected
+      if (window.ethereum && !hasManuallyDisconnected) {
         try {
           const accounts = await window.ethereum.request({
             method: 'eth_accounts',
@@ -185,7 +189,7 @@ export const useWallet = () => {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
       };
     }
-  }, []);
+  }, [hasManuallyDisconnected]);
 
   return {
     ...wallet,
