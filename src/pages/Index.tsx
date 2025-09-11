@@ -5,7 +5,8 @@ import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
 import { JournalEntries } from '@/components/JournalEntries';
 import { PhalaChat } from '@/components/PhalaChat';
-import { Sparkles, Images, BookOpen, MessageSquare } from 'lucide-react';
+import { IPFSTest } from '@/components/IPFSTest';
+import { Sparkles, Images, BookOpen, MessageSquare, Database } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -31,10 +32,14 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
         <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 max-w-4xl mx-auto mb-12">
+          <TabsList className="grid w-full grid-cols-5 max-w-5xl mx-auto mb-12">
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               AI Chat
+            </TabsTrigger>
+            <TabsTrigger value="ipfs" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              IPFS Test
             </TabsTrigger>
             <TabsTrigger value="mint" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
@@ -54,6 +59,10 @@ const Index = () => {
             <div className="max-w-4xl mx-auto">
               <PhalaChat />
             </div>
+          </TabsContent>
+          
+          <TabsContent value="ipfs" className="space-y-8">
+            <IPFSTest />
           </TabsContent>
           
           <TabsContent value="mint" className="space-y-8">

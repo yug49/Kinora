@@ -2,3 +2,6 @@ project_id = "kxombsamuzjwegdhwdve"
 
 [functions.phala-chat]
 verify_jwt = false
+
+[functions.ipfs-operations]
+verify_jwt = false
