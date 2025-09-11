@@ -13,8 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // The incoming request body is expected to be: { "message": { "new": "...", "old": [...] } }
-    // We rename `message` to `userInput` for clarity.
     const { message: userInput } = await req.json();
     console.log('Received user input:', userInput);
     
@@ -23,54 +21,51 @@ serve(async (req) => {
       throw new Error('TRAITS_AGENT_API_KEY not found');
     }
 
-    // --- MODIFICATION START ---
-    // Construct the detailed, instruction-tuned prompt for the AI agent.
-    const fullPromptContent = `You are a hyper-efficient, specialized analysis engine named TraitExtractor. Your sole purpose is to process a user's memory content and output a raw JSON object. You are a machine; you do not engage in conversation, provide explanations, or use natural language. Your entire response is always and only a single, valid, raw JSON object.
+    // --- MODIFICATION START: REVISED AND STRICTER PROMPT ---
+    // This new prompt is more direct and includes a one-shot example to force the correct format.
+    const fullPromptContent = `You are a data processing API. Your only function is to receive a JSON input and respond with a single, raw JSON object. You are forbidden from using conversational text, markdown, headers, or any characters outside of a valid JSON structure. Your entire response must start with { and end with }.
+
+Your task is to analyze the user's 'new' memory and 'old' memories to generate a JSON object with two top-level keys: "personality_traits" and "core_memories".
+
+1.  **personality_traits**: An object with 16 keys. Each key's value must be the string "yes" or "no".
+2.  **core_memories**: A JSON array of strings. This array must contain up to 50 of the user's most significant memories, curated from the 'new' and 'old' inputs. The items in the array MUST be strings, not a numbered list.
 
 ---
-INSTRUCTIONS:
-Analyze the content provided under "Content to Process" and generate a single raw JSON object as your entire response.
+EXAMPLE:
+INPUT:
+{
+  "new": "Finally learned to play 'Blackbird' on the guitar today. My fingers hurt but it was so worth it.",
+  "old": ["Graduated from university.", "My proposal to Sarah."]
+}
 
-RULES:
-1.  **Output Format**: Your entire output must be a single, raw JSON object starting with { and ending with }.
-2.  **No Extra Text**: DO NOT include markdown, introductions, explanations, apologies, or any text whatsoever outside of the JSON structure. Your response must be machine-readable raw text.
-3.  **personality_traits Object**: This object must contain exactly 16 keys. The value for each key must be either the string "yes" or the string "no".
-4.  **core_memories Array**: This array must contain strings. You will curate this list based on the following logic:
-    *   **Significance is Key**: Identify memories that represent major life events, strong emotions, key relationships, achievements, or moments of profound insight.
-    *   **Preserve Style**: Retain the user's original phrasing, grammar, and tone from the memory snippets. This is crucial for impersonation later.
-    *   **50 Memory Limit**: The final array must not contain more than 50 entries.
-    *   **Curation Logic**: If the new memory is more significant than the least important memory in the old list (which is already at 50), you must replace the least important one. If the new memory is mundane and the list is full, discard the new memory. Otherwise, add the new memory to the list.
-
-JSON OUTPUT STRUCTURE:
-\`\`\`json
+PERFECT OUTPUT:
 {
   "personality_traits": {
-    "openness": "yes/no",
-    "conscientiousness": "yes/no",
-    "extraversion": "yes/no",
-    "agreeableness": "yes/no",
-    "neuroticism": "yes/no",
-    "achievement": "yes/no",
-    "compassion": "yes/no",
-    "creativity": "yes/no",
-    "security": "yes/no",
-    "adventure": "yes/no",
-    "knowledge": "yes/no",
-    "autonomy": "yes/no",
-    "community": "yes/no",
-    "skillsHobbiesFrequency": "yes/no",
-    "interestsKnowledgeFrequency": "yes/no",
-    "keyEntitiesFrequency": "yes/no"
+    "openness": "yes",
+    "conscientiousness": "yes",
+    "extraversion": "no",
+    "agreeableness": "no",
+    "neuroticism": "no",
+    "achievement": "yes",
+    "compassion": "no",
+    "creativity": "yes",
+    "security": "no",
+    "adventure": "no",
+    "knowledge": "yes",
+    "autonomy": "yes",
+    "community": "no",
+    "skillsHobbiesFrequency": "yes",
+    "interestsKnowledgeFrequency": "no",
+    "keyEntitiesFrequency": "no"
   },
   "core_memories": [
-    "string of core memory 1...",
-    "string of core memory 2...",
-    "... up to 50 memories"
+    "Finally learned to play 'Blackbird' on the guitar today. My fingers hurt but it was so worth it.",
+    "Graduated from university.",
+    "My proposal to Sarah."
   ]
 }
-\`\`\`
-
 ---
+
 Content to Process:
 ${JSON.stringify(userInput)}
 `;
@@ -80,7 +75,7 @@ ${JSON.stringify(userInput)}
       messages: [
         {
           role: "user",
-          content: fullPromptContent, // Use the new, detailed prompt
+          content: fullPromptContent,
         },
       ],
     };
@@ -119,22 +114,17 @@ ${JSON.stringify(userInput)}
         throw new Error('No valid response content found in agent response');
     }
 
-    // --- MODIFICATION START ---
-    // The AI's response is expected to be a raw JSON string. We parse it here
-    // so the frontend receives a clean, usable JSON object.
     let finalResponseData;
     try {
         finalResponseData = JSON.parse(aiResponseString);
     } catch (parseError) {
         console.error("AI response was not valid JSON. Returning raw string for debugging.", parseError);
-        // If parsing fails, send back the raw string so you can see what went wrong.
         finalResponseData = { error: "AI response was not valid JSON", rawResponse: aiResponseString };
     }
-    // --- MODIFICATION END ---
 
     return new Response(JSON.stringify({
       success: true,
-      response: finalResponseData, // Send the parsed JSON object
+      response: finalResponseData,
       timestamp: new Date().toISOString(),
     }), {
       status: 200,
