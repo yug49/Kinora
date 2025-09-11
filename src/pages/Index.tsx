@@ -6,7 +6,8 @@ import { NFTGallery } from '@/components/NFTGallery';
 import { JournalEntries } from '@/components/JournalEntries';
 import { PhalaChat } from '@/components/PhalaChat';
 import { IPFSTest } from '@/components/IPFSTest';
-import { Sparkles, Images, BookOpen, MessageSquare, Database } from 'lucide-react';
+import { AESCrypto } from '@/components/AESCrypto';
+import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -32,7 +33,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
         <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 max-w-5xl mx-auto mb-12">
+          <TabsList className="grid w-full grid-cols-6 max-w-6xl mx-auto mb-12">
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               AI Chat
@@ -52,6 +53,10 @@ const Index = () => {
             <TabsTrigger value="journal" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Journal
+            </TabsTrigger>
+            <TabsTrigger value="crypto" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Encryption Test
             </TabsTrigger>
           </TabsList>
           
@@ -78,6 +83,12 @@ const Index = () => {
           <TabsContent value="journal" className="space-y-8">
             <div className="max-w-4xl mx-auto">
               <JournalEntries />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="crypto" className="space-y-8">
+            <div className="max-w-6xl mx-auto">
+              <AESCrypto />
             </div>
           </TabsContent>
         </Tabs>

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.fulfill-entry]
 verify_jwt = false
+
+[functions.aes-crypto]
+verify_jwt = false
