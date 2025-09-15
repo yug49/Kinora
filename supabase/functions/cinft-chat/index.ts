@@ -86,29 +86,68 @@ async function fetchAndDecryptFromIPFS(cid: string) {
   console.log('Fetching encrypted data from IPFS with CID:', cid);
   
   try {
+    // Import Supabase client within the function
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase credentials');
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
     // Step 1: Fetch encrypted data from IPFS using the ipfs-operations function
-    const ipfsResponse = await fetch(`https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/ipfs-operations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    console.log('Calling ipfs-operations function to fetch data');
+    const ipfsResponse = await supabase.functions.invoke('ipfs-operations', {
+      body: {
         operation: 'fetch',
         cid: cid
-      })
+      }
     });
     
-    if (!ipfsResponse.ok) {
-      throw new Error(`IPFS fetch failed: ${await ipfsResponse.text()}`);
+    console.log('IPFS response:', ipfsResponse);
+    
+    if (ipfsResponse.error) {
+      console.error('IPFS fetch error:', ipfsResponse.error);
+      throw new Error(`IPFS fetch failed: ${ipfsResponse.error.message}`);
     }
     
-    const ipfsData = await ipfsResponse.json();
-    console.log('IPFS fetch result:', ipfsData);
-    
-    if (!ipfsData.success) {
-      throw new Error(`IPFS fetch error: ${ipfsData.error}`);
+    if (!ipfsResponse.data || !ipfsResponse.data.success) {
+      console.error('IPFS fetch unsuccessful:', ipfsResponse.data);
+      throw new Error(`IPFS fetch error: ${ipfsResponse.data?.error || 'Unknown error'}`);
     }
     
-    // The ipfs-operations function should already decrypt the data for us
-    return ipfsData.content;
+    const encryptedData = ipfsResponse.data.content;
+    console.log('Encrypted data fetched from IPFS, length:', encryptedData.length);
+    console.log('Encrypted data preview:', encryptedData.substring(0, 100) + '...');
+    
+    // Step 2: Decrypt the fetched data using the aes-crypto function
+    console.log('Calling aes-crypto function to decrypt data');
+    const decryptResponse = await supabase.functions.invoke('aes-crypto', {
+      body: {
+        operation: 'decrypt',
+        data: encryptedData
+      }
+    });
+    
+    console.log('Decrypt response:', decryptResponse);
+    
+    if (decryptResponse.error) {
+      console.error('Decryption error:', decryptResponse.error);
+      throw new Error(`Decryption failed: ${decryptResponse.error.message}`);
+    }
+    
+    if (!decryptResponse.data || !decryptResponse.data.success) {
+      console.error('Decryption unsuccessful:', decryptResponse.data);
+      throw new Error(`Decryption error: ${decryptResponse.data?.error || 'Unknown error'}`);
+    }
+    
+    const decryptedData = decryptResponse.data.result;
+    console.log('Data decrypted successfully, length:', decryptedData.length);
+    console.log('Decrypted data preview:', decryptedData.substring(0, 100) + (decryptedData.length > 100 ? '...' : ''));
+    
+    return decryptedData;
     
   } catch (error) {
     console.error('Error fetching/decrypting from IPFS:', error);
@@ -268,12 +307,17 @@ serve(async (req) => {
     let memoryData: string;
     
     try {
-      // For testing, we'll use mock data since the CID might not exist
-      memoryData = "I love traveling and have visited over 20 countries. My favorite hobby is photography, especially landscape photography. I work as a software engineer and have been coding for over 10 years. I enjoy hiking on weekends and have a pet dog named Max. I'm passionate about technology and always excited to learn new programming languages.";
-      console.log('Memory data retrieved (mock data for testing)');
-      
-      // In production, uncomment this to fetch real data:
-      // memoryData = await fetchAndDecryptFromIPFS(cid);
+      if (cid && cid !== "QmTestCID12345") {
+        console.log('Fetching real memory data from IPFS...');
+        memoryData = await fetchAndDecryptFromIPFS(cid);
+        console.log('Memory data fetched and decrypted successfully');
+        console.log('Memory data length:', memoryData.length);
+        console.log('Memory data preview:', memoryData.substring(0, 100) + (memoryData.length > 100 ? '...' : ''));
+      } else {
+        // Use fallback for test CID
+        memoryData = "I love traveling and have visited over 20 countries. My favorite hobby is photography, especially landscape photography. I work as a software engineer and have been coding for over 10 years. I enjoy hiking on weekends and have a pet dog named Max. I'm passionate about technology and always excited to learn new programming languages.";
+        console.log('Using fallback memory data (test CID)');
+      }
       
     } catch (error) {
       console.error('Error fetching memory data:', error);
