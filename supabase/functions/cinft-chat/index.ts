@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
+import { ethers } from "npm:ethers@6.15.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,9 +9,9 @@ const corsHeaders = {
 const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
 
 const CONTRACT_ABI = [
-  'function ownerOf(uint256 tokenId) public view returns (address)',
-  'function getMemoryOfAOwner(address _owner) public view returns (string memory, tuple(uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,uint32))',
-  'function respond(bytes32 _promptId, string memory _response) public returns (string memory)'
+  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function getMemoryOfAOwner(address _owner) view returns (string, (uint32 openness,uint32 conscientiousness,uint32 extraversion,uint32 agreeableness,uint32 neuroticism,uint32 achievement,uint32 compassion,uint32 creativity,uint32 security,uint32 adventure,uint32 knowledge,uint32 autonomy,uint32 community,uint32 skillsHobbiesFrequency,uint32 interestsKnowledgeFrequency,uint32 keyEntitiesFrequency))',
+  'function respond(bytes32 _promptId, string _response) returns (string)'
 ];
 
 // Utility function to convert hex string to bytes for contract calls
@@ -309,6 +309,12 @@ serve(async (req) => {
     }
 
     console.log('Environment variables loaded');
+    console.log('Initializing ethers provider and wallet');
+    const provider = new ethers.JsonRpcProvider(personaAgentRpcUrl);
+    const wallet = new ethers.Wallet(personaAgentPrivateKey, provider);
+    console.log('Persona agent address:', wallet.address);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
+    console.log('Contract instance created with signer');
 
     // Step 2: Get the original owner of the CINFT
     console.log('=== Step 2: Getting original owner ===');
@@ -318,27 +324,18 @@ serve(async (req) => {
     let personalityTraits: any;
     
     try {
-      // Get the original owner by calling ownerOf on the contract
       console.log('Calling ownerOf for token ID:', tokenId);
-      const ownerResult = await callContractRead(personaAgentRpcUrl, 'ownerOf', [tokenId]);
-      
-      if (!ownerResult || ownerResult === '0x') {
-        throw new Error(`No owner found for token ID ${tokenId}`);
-      }
-      
-      // Decode the owner address from the result
-      owner = '0x' + ownerResult.slice(-40); // Extract address from padded result
+      const ownerAddress: string = await contract.ownerOf(BigInt(tokenId));
+      owner = ownerAddress;
       console.log('Original owner:', owner);
-      
-      if (owner.toLowerCase() !== userWalletAddress.toLowerCase()) {
-        console.log('Warning: Original owner differs from current user');
-        console.log('Original owner:', owner);
-        console.log('Current user:', userWalletAddress);
+
+      if (owner.toLowerCase() !== String(userWalletAddress).toLowerCase()) {
+        console.warn('Owner mismatch: original owner differs from current user', { owner, userWalletAddress });
       }
-      
+
     } catch (error) {
-      console.error('Error getting original owner:', error);
-      throw new Error(`Failed to get original owner: ${error.message}`);
+      console.error('Error getting original owner using ethers:', error);
+      throw new Error(`Failed to get original owner: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // Step 2b: Get memory CID and personality traits using persona agent credentials
@@ -346,45 +343,37 @@ serve(async (req) => {
     
     try {
       console.log('Calling getMemoryOfAOwner for owner:', owner);
-      const memoryResult = await callContractRead(personaAgentRpcUrl, 'getMemoryOfAOwner', [owner]);
-      
-      if (!memoryResult || memoryResult === '0x') {
-        throw new Error(`No memory data found for owner ${owner}`);
-      }
-      
-      // For now, we'll need to properly decode the result
-      // This would require proper ABI decoding in production
-      // The result should contain both CID string and PersonalityTraits struct
-      
-      // Placeholder decoding - in production this would be properly decoded
-      memoryCid = memoryResult; // This needs proper decoding
+      // This call requires msg.sender to be persona agent; using signer ensures "from" is set
+      const result = await contract.getMemoryOfAOwner(owner);
+      const [cidResult, traitsResult] = result as [string, any];
+
+      memoryCid = cidResult;
       personalityTraits = {
-        // These would be decoded from the contract result
-        openness: 75,
-        conscientiousness: 60,
-        extraversion: 80,
-        agreeableness: 70,
-        neuroticism: 30,
-        achievement: 85,
-        compassion: 75,
-        creativity: 90,
-        security: 50,
-        adventure: 85,
-        knowledge: 80,
-        autonomy: 70,
-        community: 60,
-        skillsHobbiesFrequency: 75,
-        interestsKnowledgeFrequency: 80,
-        keyEntitiesFrequency: 65
+        openness: Number(traitsResult.openness),
+        conscientiousness: Number(traitsResult.conscientiousness),
+        extraversion: Number(traitsResult.extraversion),
+        agreeableness: Number(traitsResult.agreeableness),
+        neuroticism: Number(traitsResult.neuroticism),
+        achievement: Number(traitsResult.achievement),
+        compassion: Number(traitsResult.compassion),
+        creativity: Number(traitsResult.creativity),
+        security: Number(traitsResult.security),
+        adventure: Number(traitsResult.adventure),
+        knowledge: Number(traitsResult.knowledge),
+        autonomy: Number(traitsResult.autonomy),
+        community: Number(traitsResult.community),
+        skillsHobbiesFrequency: Number(traitsResult.skillsHobbiesFrequency),
+        interestsKnowledgeFrequency: Number(traitsResult.interestsKnowledgeFrequency),
+        keyEntitiesFrequency: Number(traitsResult.keyEntitiesFrequency),
       };
-      
+
       console.log('Memory CID:', memoryCid);
       console.log('Personality traits retrieved');
       console.log('Personality traits:', personalityTraits);
-      
+
     } catch (error) {
-      console.error('Error getting memory/personality data:', error);
-      throw new Error(`Failed to get memory/personality data: ${error.message}`);
+      console.error('Error getting memory/personality data via ethers:', error);
+      throw new Error(`Failed to get memory/personality data: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // Step 3: Fetch and decrypt memory data from IPFS
@@ -417,17 +406,17 @@ serve(async (req) => {
     console.log('=== Step 5: Storing response in contract ===');
     if (promptId) {
       try {
-        const txHash = await callContractWrite(
-          personaAgentRpcUrl,
-          personaAgentPrivateKey,
-          'respond',
-          [promptId, aiResponse]
-        );
-        console.log('Response stored in contract, tx hash:', txHash);
+        console.log('Sending respond() transaction for promptId:', promptId);
+        const tx = await contract.respond(promptId, aiResponse);
+        console.log('Respond tx sent:', tx.hash);
+        const receipt = await tx.wait();
+        console.log('Respond tx confirmed, block:', receipt.blockNumber);
       } catch (error) {
-        console.error('Error storing response in contract:', error);
-        // Continue anyway - we still have the AI response
+        console.error('Error storing response in contract via ethers:', error);
+        throw new Error(`Failed to store response in contract: ${error instanceof Error ? error.message : String(error)}`);
       }
+    } else {
+      console.warn('No promptId provided from client; skipping respond() write');
     }
 
     // Step 6: Return response to client
