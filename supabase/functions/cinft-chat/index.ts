@@ -135,72 +135,59 @@ async function callContractWrite(rpcUrl: string, privateKey: string, method: str
 
 // Function to fetch and decrypt data from IPFS
 async function fetchAndDecryptFromIPFS(cid: string) {
-  console.log('Fetching encrypted data from IPFS with CID:', cid);
-  
+  console.log('Fetching memory from IPFS via ipfs-operations', { cid });
+
   try {
     // Import Supabase client within the function
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-    
+
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Missing Supabase credentials');
     }
-    
+
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    
-    // Step 1: Fetch encrypted data from IPFS using the ipfs-operations function
-    console.log('Calling ipfs-operations function to fetch data');
+
+    // Use the tested ipfs-operations function which already performs decryption
+    console.log('[IPFS] Invoking ipfs-operations with operation=fetch');
     const ipfsResponse = await supabase.functions.invoke('ipfs-operations', {
       body: {
         operation: 'fetch',
-        cid: cid
-      }
+        cid,
+      },
     });
-    
-    console.log('IPFS response:', ipfsResponse);
-    
+
+    console.log('[IPFS] Function response (status):', {
+      ok: ipfsResponse.response?.ok,
+      status: ipfsResponse.response?.status,
+      statusText: ipfsResponse.response?.statusText,
+    });
+
     if (ipfsResponse.error) {
-      console.error('IPFS fetch error:', ipfsResponse.error);
-      throw new Error(`IPFS fetch failed: ${ipfsResponse.error.message}`);
+      console.error('[IPFS] fetch error:', ipfsResponse.error);
+      throw new Error(`[IPFS] fetch failed: ${ipfsResponse.error.message}`);
     }
-    
+
     if (!ipfsResponse.data || !ipfsResponse.data.success) {
-      console.error('IPFS fetch unsuccessful:', ipfsResponse.data);
-      throw new Error(`IPFS fetch error: ${ipfsResponse.data?.error || 'Unknown error'}`);
+      console.error('[IPFS] fetch unsuccessful payload:', ipfsResponse.data);
+      throw new Error(`[IPFS] fetch error: ${ipfsResponse.data?.error || 'Unknown error'}`);
     }
-    
-    const encryptedData = ipfsResponse.data.content;
-    console.log('Encrypted data fetched from IPFS, length:', encryptedData.length);
-    console.log('Encrypted data preview:', encryptedData.substring(0, 100) + '...');
-    
-    // Step 2: Decrypt the fetched data using the aes-crypto function
-    console.log('Calling aes-crypto function to decrypt data');
-    const decryptResponse = await supabase.functions.invoke('aes-crypto', {
-      body: {
-        operation: 'decrypt',
-        data: encryptedData
-      }
+
+    // ipfs-operations returns already DECRYPTED plaintext as `content`
+    const decryptedData = ipfsResponse.data.content as string;
+    console.log('[IPFS] Decrypted content received from ipfs-operations', {
+      length: decryptedData?.length ?? 0,
+      preview: decryptedData
+        ? decryptedData.substring(0, 100) + (decryptedData.length > 100 ? '...' : '')
+        : '(empty)'
     });
-    
-    console.log('Decrypt response:', decryptResponse);
-    
-    if (decryptResponse.error) {
-      console.error('Decryption error:', decryptResponse.error);
-      throw new Error(`Decryption failed: ${decryptResponse.error.message}`);
+
+    if (!decryptedData || decryptedData.length === 0) {
+      throw new Error('[IPFS] Decrypted content is empty');
     }
-    
-    if (!decryptResponse.data || !decryptResponse.data.success) {
-      console.error('Decryption unsuccessful:', decryptResponse.data);
-      throw new Error(`Decryption error: ${decryptResponse.data?.error || 'Unknown error'}`);
-    }
-    
-    const decryptedData = decryptResponse.data.result;
-    console.log('Data decrypted successfully, length:', decryptedData.length);
-    console.log('Decrypted data preview:', decryptedData.substring(0, 100) + (decryptedData.length > 100 ? '...' : ''));
-    
+
     return decryptedData;
-    
   } catch (error) {
     console.error('Error fetching/decrypting from IPFS:', error);
     throw error;
