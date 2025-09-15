@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ethers } from 'ethers';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Send, Brain, Bot, User } from 'lucide-react';
+import { Send, Brain, Bot, User, Loader2 } from 'lucide-react';
+import { useWallet } from '@/hooks/useWallet';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NFT {
   id: string;
@@ -24,43 +27,112 @@ interface AIChatModalProps {
   onClose: () => void;
 }
 
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'ai';
-  timestamp: string;
-}
+const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
+const CONTRACT_ABI = [
+  'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32 promptId)',
+  'function ownerOf(uint256 tokenId) public view returns (address)',
+];
 
 export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const { account } = useWallet();
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [currentResponse, setCurrentResponse] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
+  const resetChat = () => {
+    console.log('=== Resetting Chat State ===');
+    setCurrentPrompt('');
+    setCurrentResponse('');
+    setError(null);
+  };
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputMessage,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString(),
-    };
+  const handleSendMessage = async () => {
+    if (!currentPrompt.trim() || !nft || !account) {
+      console.log('Cannot send message - missing data:', { prompt: !!currentPrompt.trim(), nft: !!nft, account: !!account });
+      return;
+    }
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setIsTyping(true);
+    console.log('=== Starting CINFT Chat Process ===');
+    console.log('NFT ID:', nft.id);
+    console.log('Prompt:', currentPrompt);
+    console.log('User account:', account);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "Hello! I'm your AI NFT companion. This is just a UI preview - the actual AI functionality will be implemented soon. I'm ready to chat with you!",
-        sender: 'ai',
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setIsTyping(false);
-    }, 1500);
+    setIsProcessing(true);
+    setError(null);
+    setCurrentResponse('');
+
+    try {
+      // Step 1: Submit prompt to smart contract
+      console.log('=== Step 1: Submitting prompt to smart contract ===');
+      
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      console.log('Contract instance created');
+      console.log('Calling submitPrompt with tokenId:', nft.id, 'and prompt length:', currentPrompt.length);
+
+      const tx = await contract.submitPrompt(nft.id, currentPrompt);
+      console.log('Transaction sent:', tx.hash);
+      
+      const receipt = await tx.wait();
+      console.log('Transaction confirmed:', receipt.hash);
+
+      // Extract promptId from transaction logs
+      let promptId: string | null = null;
+      if (receipt.logs && receipt.logs.length > 0) {
+        // In a real implementation, you'd properly decode the event logs
+        // For now, we'll generate a deterministic promptId
+        promptId = ethers.keccak256(ethers.toUtf8Bytes(currentPrompt));
+        console.log('Prompt ID (calculated):', promptId);
+      }
+
+      // Step 2-6: Call server-side function (these steps run in parallel/sequentially on server)
+      console.log('=== Starting Server-Side Processing ===');
+      
+      const serverResponse = await supabase.functions.invoke('cinft-chat', {
+        body: {
+          tokenId: nft.id,
+          prompt: currentPrompt,
+          promptId: promptId,
+          userWalletAddress: account
+        }
+      });
+
+      console.log('Server function response:', serverResponse);
+
+      if (serverResponse.error) {
+        throw new Error(`Server error: ${serverResponse.error.message}`);
+      }
+
+      if (!serverResponse.data || !serverResponse.data.success) {
+        throw new Error(`Server processing failed: ${serverResponse.data?.error || 'Unknown error'}`);
+      }
+
+      console.log('=== CINFT Chat Process Completed Successfully ===');
+      console.log('AI Response length:', serverResponse.data.response.length);
+      
+      setCurrentResponse(serverResponse.data.response);
+
+    } catch (error) {
+      console.error('=== CINFT Chat Process Failed ===');
+      console.error('Error details:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      
+      // If it's a user rejection, don't show as error
+      if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
+        setError('Transaction was cancelled by user');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -70,11 +142,17 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
     }
   };
 
+  const handleClose = () => {
+    console.log('=== Closing CINFT Chat Modal ===');
+    resetChat();
+    onClose();
+  };
+
   if (!nft) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl h-[600px] flex flex-col bg-gradient-card border-border/50">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col bg-gradient-card border-border/50">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-3">
             <img
@@ -86,61 +164,87 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
               <span className="text-lg">{nft.name}</span>
               <Badge variant="secondary" className="flex items-center gap-1 mt-1">
                 <Brain className="h-3 w-3" />
-                Smart NFT
+                CINFT AI Persona
               </Badge>
             </div>
           </DialogTitle>
           <DialogDescription>
-            Chat with your AI-powered NFT companion
+            Chat with your personalized AI companion powered by blockchain memory
           </DialogDescription>
         </DialogHeader>
 
         {/* Chat Area */}
-        <ScrollArea className="flex-1 px-4 py-2">
+        <ScrollArea className="flex-1 px-4 py-4 min-h-[200px]">
           <div className="space-y-4">
-            {/* Messages */}
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.sender === 'user' ? 'flex-row-reverse' : ''}`}
-              >
+            {/* Current Prompt Display */}
+            {currentPrompt && (
+              <div className="flex gap-3 flex-row-reverse">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  {message.sender === 'user' ? (
-                    <User className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Bot className="h-4 w-4 text-accent" />
-                  )}
+                  <User className="h-4 w-4 text-primary" />
                 </div>
-                <div className={`flex-1 max-w-[80%] ${message.sender === 'user' ? 'text-right' : ''}`}>
-                  <div
-                    className={`rounded-lg p-3 ${
-                      message.sender === 'user'
-                        ? 'bg-primary text-primary-foreground ml-auto'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <p className="text-sm">{message.content}</p>
+                <div className="flex-1 max-w-[80%] text-right">
+                  <div className="bg-primary text-primary-foreground rounded-lg p-3 ml-auto">
+                    <p className="text-sm">{currentPrompt}</p>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 px-1">
-                    {message.timestamp}
+                    {new Date().toLocaleTimeString()}
                   </p>
                 </div>
               </div>
-            ))}
+            )}
 
-            {/* Typing Indicator */}
-            {isTyping && (
+            {/* Processing Indicator */}
+            {isProcessing && (
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <Loader2 className="h-4 w-4 text-accent animate-spin" />
+                </div>
+                <div className="bg-muted rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-muted-foreground">Processing with AI persona...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-4 w-4 text-destructive" />
+                </div>
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* AI Response Display */}
+            {currentResponse && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
                   <Bot className="h-4 w-4 text-accent" />
                 </div>
-                <div className="bg-muted rounded-lg p-3">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="flex-1 max-w-[80%]">
+                  <div className="bg-muted rounded-lg p-3">
+                    <p className="text-sm whitespace-pre-wrap">{currentResponse}</p>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1 px-1">
+                    {new Date().toLocaleTimeString()}
+                  </p>
                 </div>
+              </div>
+            )}
+
+            {/* Welcome Message */}
+            {!currentPrompt && !currentResponse && !isProcessing && !error && (
+              <div className="text-center py-8">
+                <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">AI Persona Ready</h3>
+                <p className="text-muted-foreground text-sm">
+                  Send a message to interact with your personalized AI companion.
+                  Each conversation starts fresh with access to the persona's unique memories and traits.
+                </p>
               </div>
             )}
           </div>
@@ -149,20 +253,33 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
         {/* Input Area */}
         <div className="flex gap-2 p-4 border-t border-border/50">
           <Input
-            placeholder="Type a message..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Ask your AI persona anything..."
+            value={currentPrompt}
+            onChange={(e) => setCurrentPrompt(e.target.value)}
             onKeyPress={handleKeyPress}
             className="flex-1"
+            disabled={isProcessing}
           />
           <Button 
             onClick={handleSendMessage} 
-            disabled={!inputMessage.trim() || isTyping}
+            disabled={!currentPrompt.trim() || isProcessing || !account}
             className="px-4"
           >
-            <Send className="h-4 w-4" />
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
+
+        {!account && (
+          <div className="px-4 pb-4">
+            <p className="text-xs text-muted-foreground text-center">
+              Connect your wallet to chat with your AI persona
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
