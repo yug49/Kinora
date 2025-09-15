@@ -1,6 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Wallet, AlertTriangle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Wallet, AlertTriangle, ChevronDown, RefreshCw, LogOut } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 
 export const Header = () => {
@@ -11,6 +17,7 @@ export const Header = () => {
     isConnecting,
     connectWallet,
     disconnectWallet,
+    switchAccount,
     isOnTenNetwork,
     switchToTenNetwork,
     error,
@@ -72,14 +79,27 @@ export const Header = () => {
                 </span>
               </div>
 
-              {/* Disconnect Button */}
-              <Button 
-                variant="outline" 
-                onClick={disconnectWallet}
-                className="hover:shadow-glow transition-all duration-300"
-              >
-                Disconnect
-              </Button>
+              {/* Account Actions Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    className="hover:shadow-glow transition-all duration-300"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={switchAccount}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Switch Account
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={disconnectWallet}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Disconnect
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <Button 

@@ -128,6 +128,29 @@ export const useWallet = () => {
     }
   };
 
+  const switchAccount = async () => {
+    if (!window.ethereum) return;
+    
+    setWallet(prev => ({ ...prev, error: null }));
+    
+    try {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
+
+      if (accounts.length > 0) {
+        const account = accounts[0];
+        setWallet(prev => ({ ...prev, account }));
+        await updateBalance(account);
+      }
+    } catch (error: any) {
+      setWallet(prev => ({
+        ...prev,
+        error: error.message || 'Failed to switch account',
+      }));
+    }
+  };
+
   useEffect(() => {
     const checkConnection = async () => {
       // Only auto-connect if user hasn't manually disconnected
@@ -196,6 +219,7 @@ export const useWallet = () => {
     connectWallet,
     disconnectWallet,
     switchToTenNetwork,
+    switchAccount,
     isOnTenNetwork: wallet.chainId === TEN_CHAIN_ID,
     TEN_CHAIN_ID,
   };
