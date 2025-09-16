@@ -21,7 +21,13 @@ export const useWallet = () => {
     isConnecting: false,
     error: null,
   });
-  const [hasManuallyDisconnected, setHasManuallyDisconnected] = useState(false);
+  const [hasManuallyDisconnected, setHasManuallyDisconnected] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('wallet:manuallyDisconnected') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   const updateBalance = async (account: string) => {
     try {
@@ -50,6 +56,7 @@ export const useWallet = () => {
   const connectWallet = async () => {
     setWallet(prev => ({ ...prev, isConnecting: true, error: null }));
     setHasManuallyDisconnected(false); // Clear the manual disconnect flag
+    try { localStorage.setItem('wallet:manuallyDisconnected', 'false'); } catch {}
 
     // Check if MetaMask is available or wait for it to load
     const hasProvider = await detectProvider();
@@ -100,6 +107,7 @@ export const useWallet = () => {
 
   const disconnectWallet = () => {
     setHasManuallyDisconnected(true); // Set flag to prevent auto-reconnection
+    try { localStorage.setItem('wallet:manuallyDisconnected', 'true'); } catch {}
     setWallet({
       account: null,
       balance: null,
@@ -131,22 +139,43 @@ export const useWallet = () => {
   const switchAccount = async () => {
     if (!window.ethereum) return;
     
-    setWallet(prev => ({ ...prev, error: null }));
+    setWallet(prev => ({ ...prev, error: null, isConnecting: true }));
     
     try {
+      // Request account permissions to trigger MetaMask account picker
+      await window.ethereum.request({
+        method: 'wallet_requestPermissions',
+        params: [{ eth_accounts: {} }],
+      });
+
+      // Then request the accounts
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
 
       if (accounts.length > 0) {
         const account = accounts[0];
-        setWallet(prev => ({ ...prev, account }));
+        setWallet(prev => ({ ...prev, account, isConnected: true, isConnecting: false }));
         await updateBalance(account);
+      } else {
+        setWallet(prev => ({ ...prev, isConnecting: false }));
       }
     } catch (error: any) {
+      // Fallback to eth_requestAccounts if permissions request fails
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts.length > 0) {
+          const account = accounts[0];
+          setWallet(prev => ({ ...prev, account, isConnected: true, isConnecting: false }));
+          await updateBalance(account);
+          return;
+        }
+      } catch {}
+
       setWallet(prev => ({
         ...prev,
-        error: error.message || 'Failed to switch account',
+        error: error?.message || 'Failed to switch account',
+        isConnecting: false,
       }));
     }
   };
