@@ -3,9 +3,14 @@ import { ethers } from 'ethers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, MessageCircle, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Brain, MessageCircle, Loader2, MoreVertical, Send } from 'lucide-react';
 import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
+import { toast } from 'sonner';
 
 const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
 
@@ -19,7 +24,8 @@ const CONTRACT_ABI = [
   'function balanceOf(address owner) public view returns (uint256)',
   'function getMinter(uint256 tokenId) public view returns (address)',
   'function registerEntry(string memory _memory) public returns (bytes32)',
-  'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32)'
+  'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32)',
+  'function transferFrom(address from, address to, uint256 tokenId) public'
 ];
 
 interface NFT {
@@ -34,6 +40,10 @@ export const NFTGallery = () => {
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transferAddress, setTransferAddress] = useState('');
+  const [transferring, setTransferring] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferTokenId, setTransferTokenId] = useState<string | null>(null);
 
   const fetchUserNFTs = async () => {
     console.log('=== NFT Fetch Debug ===');
@@ -124,6 +134,60 @@ export const NFTGallery = () => {
     return () => clearTimeout(timer);
   }, [isConnected, isOnTenNetwork, account]);
 
+  const handleTransfer = async () => {
+    if (!transferTokenId || !transferAddress || !account) return;
+
+    setTransferring(true);
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      // Validate address format
+      if (!ethers.isAddress(transferAddress)) {
+        throw new Error('Invalid address format');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      console.log('Initiating transfer:', {
+        from: account,
+        to: transferAddress,
+        tokenId: transferTokenId
+      });
+
+      const tx = await contract.transferFrom(account, transferAddress, BigInt(transferTokenId));
+      console.log('Transfer transaction sent:', tx.hash);
+
+      toast.success('Transfer initiated! Waiting for confirmation...');
+      
+      await tx.wait();
+      console.log('Transfer confirmed:', tx.hash);
+      
+      toast.success('NFT transferred successfully!');
+      
+      // Reset states and refresh NFTs
+      setTransferDialogOpen(false);
+      setTransferAddress('');
+      setTransferTokenId(null);
+      fetchUserNFTs();
+      
+    } catch (error) {
+      console.error('Transfer failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Transfer failed');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const openTransferDialog = (tokenId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTransferTokenId(tokenId);
+    setTransferDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -174,6 +238,27 @@ export const NFTGallery = () => {
                 className="w-full h-64 object-cover transition-all duration-300 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              {/* Three dots menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-background/80 hover:bg-background/90 h-8 w-8 p-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => openTransferDialog(nft.id, e)}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Transfer NFT
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button
                 size="sm"
                 className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-primary/90 hover:bg-primary"
@@ -214,6 +299,60 @@ export const NFTGallery = () => {
         isOpen={!!selectedNFT}
         onClose={() => setSelectedNFT(null)}
       />
+
+      {/* Transfer Dialog */}
+      <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transfer NFT</DialogTitle>
+            <DialogDescription>
+              Enter the recipient's wallet address to transfer CINFT #{transferTokenId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="address">Recipient Address</Label>
+              <Input
+                id="address"
+                type="text"
+                placeholder="0x..."
+                value={transferAddress}
+                onChange={(e) => setTransferAddress(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setTransferDialogOpen(false);
+                  setTransferAddress('');
+                  setTransferTokenId(null);
+                }}
+                disabled={transferring}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleTransfer} 
+                disabled={!transferAddress || transferring}
+              >
+                {transferring ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Transferring...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Transfer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
