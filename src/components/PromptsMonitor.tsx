@@ -42,6 +42,8 @@ interface PromptDetails {
   sender: string;
   owner: string;
   promptId: string;
+  responseCid: string;
+  actualResponse: string;
 }
 
 export const PromptsMonitor = () => {
@@ -86,12 +88,56 @@ export const PromptsMonitor = () => {
       
       const [prompt, response, sender, owner] = await contract.getPromptDetails(promptId);
       
+      // The response field now contains the IPFS CID
+      const responseCid = response;
+      let actualResponse = '';
+      
+      // If we have a CID (and it's not empty), fetch the content from IPFS
+      if (responseCid && responseCid !== '' && responseCid.length > 10) {
+        try {
+          console.log('Fetching response content from IPFS, CID:', responseCid);
+          
+          const ipfsResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/ipfs-operations', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4b21ic2FtdXpqd2VnZGh3ZHZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5OTcwOTMsImV4cCI6MjA3MjU3MzA5M30.cE4_12M5KgaSxx3owZLovsLUycI2ZXR41UKM4-fhAaA`,
+            },
+            body: JSON.stringify({
+              operation: 'fetch',
+              cid: responseCid
+            })
+          });
+
+          if (ipfsResponse.ok) {
+            const ipfsResult = await ipfsResponse.json();
+            if (ipfsResult.success) {
+              actualResponse = ipfsResult.content;
+              console.log('Response content fetched from IPFS successfully');
+            } else {
+              console.warn('Failed to fetch from IPFS:', ipfsResult.error);
+              actualResponse = 'Failed to fetch response content from IPFS';
+            }
+          } else {
+            console.warn('IPFS fetch request failed:', ipfsResponse.status);
+            actualResponse = 'Failed to fetch response content from IPFS';
+          }
+        } catch (error) {
+          console.error('Error fetching from IPFS:', error);
+          actualResponse = 'Error fetching response content from IPFS';
+        }
+      } else {
+        actualResponse = responseCid || 'No response available';
+      }
+      
       setSelectedPrompt({
         prompt,
-        response,
+        response: responseCid,
         sender,
         owner,
-        promptId
+        promptId,
+        responseCid,
+        actualResponse
       });
     } catch (error: any) {
       console.error('Error fetching prompt details:', error);
@@ -202,8 +248,24 @@ export const PromptsMonitor = () => {
                 </div>
               </div>
 
-              {/* Response */}
-              {selectedPrompt.response && (
+              {/* Response CID */}
+              {selectedPrompt.responseCid && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Response CID</span>
+                    <Badge variant="outline">IPFS</Badge>
+                  </div>
+                  <div className="bg-background/50 rounded-lg p-4 border">
+                    <code className="text-xs bg-muted px-2 py-1 rounded block break-all">
+                      {selectedPrompt.responseCid}
+                    </code>
+                  </div>
+                </div>
+              )}
+
+              {/* Actual Response Content */}
+              {selectedPrompt.actualResponse && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-accent" />
@@ -212,13 +274,13 @@ export const PromptsMonitor = () => {
                   </div>
                   <div className="bg-muted/50 rounded-lg p-4 border">
                     <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown>{selectedPrompt.response}</ReactMarkdown>
+                      <ReactMarkdown>{selectedPrompt.actualResponse}</ReactMarkdown>
                     </div>
                   </div>
                 </div>
               )}
 
-              {!selectedPrompt.response && (
+              {!selectedPrompt.responseCid && !selectedPrompt.actualResponse && (
                 <div className="text-center py-4">
                   <p className="text-muted-foreground text-sm">No response yet</p>
                 </div>

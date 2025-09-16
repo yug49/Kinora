@@ -390,25 +390,64 @@ serve(async (req) => {
     const aiResponse = await callPhalaAgent(prompt, memoryData, personalityTraits);
     console.log('AI response generated successfully');
 
-    // Step 5: Store response in contract
-    console.log('=== Step 5: Storing response in contract ===');
+    // Step 5: Upload response to IPFS and store CID in contract
+    console.log('=== Step 5: Uploading response to IPFS ===');
+    let responseCid: string;
+    
+    try {
+      console.log('Uploading AI response to IPFS, response length:', aiResponse.length);
+      
+      const ipfsResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/ipfs-operations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          operation: 'upload',
+          data: aiResponse
+        })
+      });
+
+      if (!ipfsResponse.ok) {
+        const errorText = await ipfsResponse.text();
+        console.error('IPFS upload failed:', errorText);
+        throw new Error(`IPFS upload failed: ${ipfsResponse.status} ${errorText}`);
+      }
+
+      const ipfsResult = await ipfsResponse.json();
+      if (!ipfsResult.success) {
+        console.error('IPFS upload error:', ipfsResult.error);
+        throw new Error(`IPFS upload error: ${ipfsResult.error}`);
+      }
+
+      responseCid = ipfsResult.cid;
+      console.log('AI response uploaded to IPFS successfully, CID:', responseCid);
+      
+    } catch (error) {
+      console.error('Error uploading response to IPFS:', error);
+      throw new Error(`Failed to upload response to IPFS: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Step 6: Store response CID in contract
+    console.log('=== Step 6: Storing response CID in contract ===');
     if (promptId) {
       try {
-        console.log('Sending respond() transaction for promptId:', promptId);
-        const tx = await contract.respond(promptId, aiResponse);
+        console.log('Sending respond() transaction with CID:', responseCid, 'for promptId:', promptId);
+        const tx = await contract.respond(promptId, responseCid);
         console.log('Respond tx sent:', tx.hash);
         const receipt = await tx.wait();
         console.log('Respond tx confirmed, block:', receipt.blockNumber);
       } catch (error) {
-        console.error('Error storing response in contract via ethers:', error);
-        throw new Error(`Failed to store response in contract: ${error instanceof Error ? error.message : String(error)}`);
+        console.error('Error storing response CID in contract via ethers:', error);
+        throw new Error(`Failed to store response CID in contract: ${error instanceof Error ? error.message : String(error)}`);
       }
     } else {
       console.warn('No promptId provided from client; skipping respond() write');
     }
 
-    // Step 6: Return response to client
-    console.log('=== Step 6: Returning response to client ===');
+    // Step 7: Return response to client
+    console.log('=== Step 7: Returning response to client ===');
     
     return new Response(JSON.stringify({
       success: true,
