@@ -44,7 +44,7 @@ export const MintingForm = () => {
       
       if (mintTo === 'self') {
         // Call mint(string memory _imageUrl)
-        tx = await contract.mint(imageUrl);
+        tx = await contract["mint(string)"](imageUrl);
         toast({
           title: "Minting to yourself...",
           description: `Transaction submitted: ${tx.hash}`,
@@ -56,7 +56,7 @@ export const MintingForm = () => {
         }
         
         // Call mint(address _to, string memory _imageUrl)
-        tx = await contract.mint(customAddress, imageUrl);
+        tx = await contract["mint(address,string)"](customAddress, imageUrl);
         toast({
           title: "Minting to recipient...",
           description: `Transaction submitted: ${tx.hash}`,
