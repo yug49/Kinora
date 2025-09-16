@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CONTRACT_ADDRESS = '0xED58a7435F9de58dEC8E6B49001107d89D8d0Ac5';
+const CONTRACT_ADDRESS = '0x9A8518cD0B06633437f7966eC5290A2a6E27230E';
 const CONTRACT_ABI = [
   'function fullfillEntry(bytes32 _requestId, string memory _newCid, tuple(bool[8] data) _fullfilmentConfig) public'
 ];
