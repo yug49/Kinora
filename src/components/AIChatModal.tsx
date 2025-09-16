@@ -87,12 +87,14 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
       console.log('Transaction confirmed:', receipt.hash);
 
       // Extract promptId from transaction logs
-      let promptId: string | null = null;
+      // Always calculate the promptId deterministically from the prompt
+      const promptId = ethers.keccak256(ethers.toUtf8Bytes(currentPrompt));
+      console.log('Prompt ID (calculated):', promptId);
+      
       if (receipt.logs && receipt.logs.length > 0) {
-        // In a real implementation, you'd properly decode the event logs
-        // For now, we'll generate a deterministic promptId
-        promptId = ethers.keccak256(ethers.toUtf8Bytes(currentPrompt));
-        console.log('Prompt ID (calculated):', promptId);
+        console.log('Transaction logs found:', receipt.logs.length);
+        // In a production implementation, you could decode the actual event logs here
+        // to get the promptId from the ResponseRequested event
       }
 
       // Step 2-6: Call server-side function with proper verification
@@ -120,21 +122,32 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
 
       // Verify that the response was properly stored and confirmed
       const responseData = serverResponse.data;
-      if (!responseData.verified || !responseData.verified.ipfsStorage || !responseData.verified.contractStorage) {
-        throw new Error('Response verification failed: Storage not confirmed');
-      }
-
-      if (!responseData.txHash || !responseData.blockNumber) {
-        throw new Error('Response verification failed: Transaction not confirmed');
-      }
-
-      console.log('=== CINFT Chat Process Completed and Verified Successfully ===');
-      console.log('AI Response length:', responseData.response.length);
-      console.log('Transaction Hash:', responseData.txHash);
-      console.log('Block Number:', responseData.blockNumber);
-      console.log('IPFS CID:', responseData.responseCid);
       
-      setProcessingStep('Response verified and confirmed!');
+      // Check verification status - allow partial verification
+      if (responseData.verified) {
+        const { ipfsStorage, contractStorage } = responseData.verified;
+        
+        if (!ipfsStorage) {
+          console.warn('IPFS storage verification failed');
+        }
+        
+        if (!contractStorage) {
+          console.warn('Contract storage verification failed - response stored in IPFS only');
+        }
+        
+        if (!ipfsStorage && !contractStorage) {
+          throw new Error('Response verification failed: Neither IPFS nor contract storage confirmed');
+        }
+      }
+
+      console.log('=== CINFT Chat Process Completed Successfully ===');
+      console.log('AI Response length:', responseData.response.length);
+      console.log('Transaction Hash:', responseData.txHash || 'N/A');
+      console.log('Block Number:', responseData.blockNumber || 'N/A');
+      console.log('IPFS CID:', responseData.responseCid);
+      console.log('Storage Verification:', responseData.verified);
+      
+      setProcessingStep('Response generated and stored!');
       setCurrentResponse(responseData.response);
 
     } catch (error) {

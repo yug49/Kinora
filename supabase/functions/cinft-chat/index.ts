@@ -430,10 +430,11 @@ serve(async (req) => {
       throw new Error(`Failed to upload response to IPFS: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Step 6: Store response CID in contract and wait for confirmation
+    // Step 6: Store response CID in contract and wait for confirmation (if promptId available)
     console.log('=== Step 6: Storing response CID in contract ===');
     let txHash: string | null = null;
     let blockNumber: number | null = null;
+    let contractStorageVerified = false;
     
     if (promptId) {
       try {
@@ -452,35 +453,39 @@ serve(async (req) => {
         console.log('Verifying response was stored in contract...');
         const storedResponse = await contract.getPromptDetails(promptId);
         if (!storedResponse[1] || storedResponse[1] !== responseCid) {
-          throw new Error('Response verification failed: CID not properly stored in contract');
+          console.warn('Response verification failed: CID not properly stored in contract');
+        } else {
+          contractStorageVerified = true;
+          console.log('Response CID verification successful');
         }
-        console.log('Response CID verification successful');
         
       } catch (error) {
         console.error('Error storing response CID in contract via ethers:', error);
-        throw new Error(`Failed to store response CID in contract: ${error instanceof Error ? error.message : String(error)}`);
+        console.warn('Contract storage failed, but continuing with IPFS-only storage');
       }
     } else {
-      console.warn('No promptId provided from client; skipping respond() write');
-      throw new Error('PromptId is required for storing response in contract');
+      console.warn('No promptId provided from client; skipping contract storage');
     }
 
     // Step 7: Verify IPFS storage by attempting to fetch the stored response
     console.log('=== Step 7: Verifying IPFS storage ===');
+    let ipfsStorageVerified = false;
     try {
       console.log('Verifying response was properly stored in IPFS...');
       const verificationData = await fetchAndDecryptFromIPFS(responseCid);
       if (verificationData !== aiResponse) {
-        throw new Error('IPFS verification failed: stored data does not match original response');
+        console.warn('IPFS verification failed: stored data does not match original response');
+      } else {
+        ipfsStorageVerified = true;
+        console.log('IPFS storage verification successful');
       }
-      console.log('IPFS storage verification successful');
     } catch (error) {
       console.error('IPFS verification failed:', error);
-      throw new Error(`IPFS storage verification failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn('IPFS storage verification failed, but response was generated');
     }
 
     // Step 8: Return response to client with confirmation details
-    console.log('=== Step 8: Returning verified response to client ===');
+    console.log('=== Step 8: Returning response to client ===');
     
     return new Response(JSON.stringify({
       success: true,
@@ -490,13 +495,15 @@ serve(async (req) => {
       blockNumber: blockNumber,
       minter: minter,
       verified: {
-        ipfsStorage: true,
-        contractStorage: true,
+        ipfsStorage: ipfsStorageVerified,
+        contractStorage: contractStorageVerified,
         timestamp: new Date().toISOString()
       },
       promptId: promptId,
       timestamp: new Date().toISOString(),
-      message: 'CINFT Chat completed and verified successfully'
+      message: contractStorageVerified && ipfsStorageVerified ? 
+        'CINFT Chat completed and fully verified' : 
+        'CINFT Chat completed (partial verification)'
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
