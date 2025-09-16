@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { MessageSquare, User, Clock, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const CONTRACT_ADDRESS = "0x9A8518cD0B06633437f7966eC5290A2a6E27230E";
+const CONTRACT_ADDRESS = "0x90915FFa10D23f5Ee91325100B98e1a9E88E0b67";
 const TEN_CHAIN_ID = "0x111"; // 273 in hex
 
 // Minimal ABI for the functions we need
