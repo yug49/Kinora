@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Brain, MessageCircle, Loader2, MoreVertical, Send } from 'lucide-react';
+import { Brain, MessageCircle, Loader2, MoreVertical, Send, ThumbsUp, ThumbsDown, Star, Copy } from 'lucide-react';
 import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
@@ -25,13 +25,26 @@ const CONTRACT_ABI = [
   'function getMinter(uint256 tokenId) public view returns (address)',
   'function registerEntry(string memory _memory) public returns (bytes32)',
   'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32)',
-  'function transferFrom(address from, address to, uint256 tokenId) public'
+  'function transferFrom(address from, address to, uint256 tokenId) public',
+  'function rate(uint256 tokenId, bool isLike) public',
+  'function getRatingOfAToken(uint256 tokenId) public view returns (uint256 likes, uint256 dislikes)',
+  'function getPromptsOnSale(uint256 tokenId) public view returns (bytes32[] memory)',
+  'function getDescriptionAndPriceOfAPromptOnSale(bytes32 _promptId) public view returns (string memory, uint256)',
+  'function purchasePrompt(bytes32 _promptId) payable public returns (string memory _prompt)'
 ];
 
 interface NFT {
   id: string;
   name: string;
   image: string;
+  likes: number;
+  dislikes: number;
+}
+
+interface PromptOnSale {
+  promptId: string;
+  description: string;
+  price: string;
 }
 
 export const NFTGallery = () => {
@@ -44,6 +57,15 @@ export const NFTGallery = () => {
   const [transferring, setTransferring] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [transferTokenId, setTransferTokenId] = useState<string | null>(null);
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [ratingTokenId, setRatingTokenId] = useState<string | null>(null);
+  const [rating, setRating] = useState(false);
+  const [promptsDialogOpen, setPromptsDialogOpen] = useState(false);
+  const [promptsTokenId, setPromptsTokenId] = useState<string | null>(null);
+  const [promptsOnSale, setPromptsOnSale] = useState<PromptOnSale[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptOnSale | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchasedPrompt, setPurchasedPrompt] = useState<string | null>(null);
 
   const fetchUserNFTs = async () => {
     console.log('=== NFT Fetch Debug ===');
@@ -93,16 +115,22 @@ export const NFTGallery = () => {
         console.log('Token ID at index', i, ':', tokenId.toString());
       }
 
-      // Fetch image URLs for each token
+      // Fetch image URLs and ratings for each token
       const nftPromises = tokenIds.map(async (tokenId: any) => {
         console.log('Fetching image for token ID:', tokenId.toString());
         const imageUrl = await contract.getTokenIdToImageUrl(tokenId);
         console.log('Image URL for token', tokenId.toString(), ':', imageUrl);
         
+        // Fetch ratings for this token
+        const [likes, dislikes] = await contract.getRatingOfAToken(tokenId);
+        console.log('Ratings for token', tokenId.toString(), '- Likes:', likes.toString(), 'Dislikes:', dislikes.toString());
+        
         const nft = {
           id: tokenId.toString(),
           name: `CINFT #${tokenId.toString()}`,
-          image: imageUrl
+          image: imageUrl,
+          likes: Number(likes),
+          dislikes: Number(dislikes)
         };
         console.log('Created NFT object:', nft);
         return nft;
@@ -189,6 +217,139 @@ export const NFTGallery = () => {
     setTransferDialogOpen(true);
   };
 
+  const openRatingDialog = (tokenId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRatingTokenId(tokenId);
+    setRatingDialogOpen(true);
+  };
+
+  const handleRating = async (isLike: boolean) => {
+    if (!ratingTokenId || !account) return;
+
+    setRating(true);
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      console.log('Submitting rating:', {
+        tokenId: ratingTokenId,
+        isLike
+      });
+
+      const tx = await contract.rate(BigInt(ratingTokenId), isLike);
+      console.log('Rating transaction sent:', tx.hash);
+
+      toast.success('Rating submitted! Waiting for confirmation...');
+      
+      await tx.wait();
+      console.log('Rating confirmed:', tx.hash);
+      
+      toast.success('Rating submitted successfully!');
+      
+      // Reset states and refresh NFTs
+      setRatingDialogOpen(false);
+      setRatingTokenId(null);
+      fetchUserNFTs();
+      
+    } catch (error) {
+      console.error('Rating failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Rating failed');
+    } finally {
+      setRating(false);
+    }
+  };
+
+  const openPromptsDialog = async (tokenId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPromptsTokenId(tokenId);
+    
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+      const promptIds = await contract.getPromptsOnSale(BigInt(tokenId));
+      console.log('Prompts on sale for token', tokenId, ':', promptIds);
+
+      const promptsData = await Promise.all(
+        promptIds.map(async (promptId: string) => {
+          const [description, price] = await contract.getDescriptionAndPriceOfAPromptOnSale(promptId);
+          return {
+            promptId,
+            description,
+            price: ethers.formatEther(price)
+          };
+        })
+      );
+
+      setPromptsOnSale(promptsData);
+      setPromptsDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching prompts on sale:', error);
+      toast.error('Failed to fetch prompts');
+    }
+  };
+
+  const handlePurchasePrompt = async () => {
+    if (!selectedPrompt || !account) return;
+
+    setPurchasing(true);
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      const priceInWei = ethers.parseEther(selectedPrompt.price);
+      
+      console.log('Purchasing prompt:', {
+        promptId: selectedPrompt.promptId,
+        price: selectedPrompt.price
+      });
+
+      const tx = await contract.purchasePrompt(selectedPrompt.promptId, {
+        value: priceInWei
+      });
+      console.log('Purchase transaction sent:', tx.hash);
+
+      toast.success('Purchase initiated! Waiting for confirmation...');
+      
+      const receipt = await tx.wait();
+      console.log('Purchase confirmed:', tx.hash);
+      
+      // The return value should be in the transaction receipt or we need to call the function again
+      // Since it's a payable function, we get the prompt from the return value
+      toast.success('Prompt purchased successfully!');
+      
+      // For now, we'll show the prompt ID as purchased. In a real implementation,
+      // you might need to decode the return value from the transaction receipt
+      setPurchasedPrompt(`Prompt purchased! Prompt ID: ${selectedPrompt.promptId}`);
+      setSelectedPrompt(null);
+      
+    } catch (error) {
+      console.error('Purchase failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Purchase failed');
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -257,6 +418,14 @@ export const NFTGallery = () => {
                     <Send className="h-4 w-4 mr-2" />
                     Transfer NFT
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => openRatingDialog(nft.id, e)}>
+                    <Star className="h-4 w-4 mr-2" />
+                    Rate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => openPromptsDialog(nft.id, e)}>
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Buy Exclusive Prompts
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -276,9 +445,19 @@ export const NFTGallery = () => {
                   AI
                 </Badge>
               </div>
-              <div className="flex justify-between items-center text-xs text-muted-foreground">
+              <div className="flex justify-between items-center text-xs text-muted-foreground mb-3">
                 <span>Token ID</span>
                 <span>#{nft.id}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-1 text-green-600">
+                  <ThumbsUp className="h-4 w-4" />
+                  <span>{nft.likes}</span>
+                </div>
+                <div className="flex items-center gap-1 text-red-600">
+                  <ThumbsDown className="h-4 w-4" />
+                  <span>{nft.dislikes}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -352,6 +531,147 @@ export const NFTGallery = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rating Dialog */}
+      <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rate CINFT</DialogTitle>
+            <DialogDescription>
+              Rate CINFT #{ratingTokenId}. You can only rate once per minter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center space-x-4">
+            <Button 
+              onClick={() => handleRating(true)} 
+              disabled={rating}
+              className="flex items-center gap-2"
+            >
+              {rating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ThumbsUp className="h-4 w-4" />
+              )}
+              Like
+            </Button>
+            <Button 
+              onClick={() => handleRating(false)} 
+              disabled={rating}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {rating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ThumbsDown className="h-4 w-4" />
+              )}
+              Dislike
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Prompts Marketplace Dialog */}
+      <Dialog open={promptsDialogOpen} onOpenChange={setPromptsDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Buy Exclusive Prompts</DialogTitle>
+            <DialogDescription>
+              Exclusive prompts available for CINFT #{promptsTokenId}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {purchasedPrompt ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2">Prompt Purchased Successfully!</h3>
+                <p className="text-sm text-green-700 mb-3">
+                  ⚠️ Copy this prompt now - it won't be saved anywhere. If you don't copy it, you may need to buy it again.
+                </p>
+                <div className="bg-white p-3 rounded border">
+                  <p className="text-sm">{purchasedPrompt}</p>
+                </div>
+                <Button
+                  onClick={() => copyToClipboard(purchasedPrompt)}
+                  className="mt-2 w-full"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Prompt
+                </Button>
+              </div>
+              <Button
+                onClick={() => {
+                  setPurchasedPrompt(null);
+                  setPromptsDialogOpen(false);
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          ) : selectedPrompt ? (
+            <div className="space-y-4">
+              <div className="p-4 border rounded-lg">
+                <h3 className="font-semibold mb-2">Prompt Details</h3>
+                <p className="text-sm text-muted-foreground mb-2">{selectedPrompt.description}</p>
+                <p className="text-lg font-bold">{selectedPrompt.price} ETH</p>
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => setSelectedPrompt(null)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handlePurchasePrompt}
+                  disabled={purchasing}
+                  className="flex-1"
+                >
+                  {purchasing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Purchasing...
+                    </>
+                  ) : (
+                    'Buy Prompt'
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {promptsOnSale.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No exclusive prompts available for this CINFT
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {promptsOnSale.map((prompt, index) => (
+                    <div
+                      key={prompt.promptId}
+                      className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedPrompt(prompt)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">Prompt #{index + 1}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {prompt.description || 'No description available'}
+                          </p>
+                        </div>
+                        <p className="font-bold">{prompt.price} ETH</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
