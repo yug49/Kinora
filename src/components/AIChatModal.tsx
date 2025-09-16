@@ -38,12 +38,14 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [currentResponse, setCurrentResponse] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const resetChat = () => {
     console.log('=== Resetting Chat State ===');
     setCurrentPrompt('');
     setCurrentResponse('');
+    setProcessingStep('');
     setError(null);
   };
 
@@ -61,6 +63,7 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
     setIsProcessing(true);
     setError(null);
     setCurrentResponse('');
+    setProcessingStep('Submitting prompt to blockchain...');
 
     try {
       // Step 1: Submit prompt to smart contract
@@ -92,8 +95,9 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
         console.log('Prompt ID (calculated):', promptId);
       }
 
-      // Step 2-6: Call server-side function (these steps run in parallel/sequentially on server)
+      // Step 2-6: Call server-side function with proper verification
       console.log('=== Starting Server-Side Processing ===');
+      setProcessingStep('Generating AI response and storing to IPFS...');
       
       const serverResponse = await supabase.functions.invoke('cinft-chat', {
         body: {
@@ -114,10 +118,24 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
         throw new Error(`Server processing failed: ${serverResponse.data?.error || 'Unknown error'}`);
       }
 
-      console.log('=== CINFT Chat Process Completed Successfully ===');
-      console.log('AI Response length:', serverResponse.data.response.length);
+      // Verify that the response was properly stored and confirmed
+      const responseData = serverResponse.data;
+      if (!responseData.verified || !responseData.verified.ipfsStorage || !responseData.verified.contractStorage) {
+        throw new Error('Response verification failed: Storage not confirmed');
+      }
+
+      if (!responseData.txHash || !responseData.blockNumber) {
+        throw new Error('Response verification failed: Transaction not confirmed');
+      }
+
+      console.log('=== CINFT Chat Process Completed and Verified Successfully ===');
+      console.log('AI Response length:', responseData.response.length);
+      console.log('Transaction Hash:', responseData.txHash);
+      console.log('Block Number:', responseData.blockNumber);
+      console.log('IPFS CID:', responseData.responseCid);
       
-      setCurrentResponse(serverResponse.data.response);
+      setProcessingStep('Response verified and confirmed!');
+      setCurrentResponse(responseData.response);
 
     } catch (error) {
       console.error('=== CINFT Chat Process Failed ===');
@@ -132,6 +150,7 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
       }
     } finally {
       setIsProcessing(false);
+      setProcessingStep('');
     }
   };
 
@@ -201,7 +220,9 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
                 </div>
                 <div className="bg-muted rounded-lg p-3">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">Processing with AI persona...</span>
+                    <span className="text-sm text-muted-foreground">
+                      {processingStep || 'Processing with AI persona...'}
+                    </span>
                   </div>
                 </div>
               </div>

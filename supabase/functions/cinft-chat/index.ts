@@ -13,6 +13,7 @@ const CONTRACT_ABI = [
   'function getMemoryOfAOwner(address _owner) view returns (string memory, tuple(uint32 openness, uint32 conscientiousness, uint32 extraversion, uint32 agreeableness, uint32 neuroticism, uint32 achievement, uint32 compassion, uint32 creativity, uint32 security, uint32 adventure, uint32 knowledge, uint32 autonomy, uint32 community, uint32 skillsHobbiesFrequency, uint32 interestsKnowledgeFrequency, uint32 keyEntitiesFrequency))',
   'function submitPrompt(uint256 _tokenId, string memory _prompt) returns (bytes32)',
   'function respond(bytes32 _promptId, string memory _response) returns (string memory)',
+  'function getPromptDetails(bytes32 _promptId) view returns (string memory prompt, string memory response, address sender, address owner)',
 ];
 
 // Utility function to convert hex string to bytes for contract calls
@@ -429,31 +430,73 @@ serve(async (req) => {
       throw new Error(`Failed to upload response to IPFS: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Step 6: Store response CID in contract
+    // Step 6: Store response CID in contract and wait for confirmation
     console.log('=== Step 6: Storing response CID in contract ===');
+    let txHash: string | null = null;
+    let blockNumber: number | null = null;
+    
     if (promptId) {
       try {
         console.log('Sending respond() transaction with CID:', responseCid, 'for promptId:', promptId);
         const tx = await contract.respond(promptId, responseCid);
-        console.log('Respond tx sent:', tx.hash);
+        txHash = tx.hash;
+        console.log('Respond tx sent:', txHash);
+        
+        // Wait for transaction confirmation with timeout
+        console.log('Waiting for transaction confirmation...');
         const receipt = await tx.wait();
-        console.log('Respond tx confirmed, block:', receipt.blockNumber);
+        blockNumber = receipt.blockNumber;
+        console.log('Respond tx confirmed, block:', blockNumber);
+        
+        // Additional verification: check if the response was actually stored
+        console.log('Verifying response was stored in contract...');
+        const storedResponse = await contract.getPromptDetails(promptId);
+        if (!storedResponse[1] || storedResponse[1] !== responseCid) {
+          throw new Error('Response verification failed: CID not properly stored in contract');
+        }
+        console.log('Response CID verification successful');
+        
       } catch (error) {
         console.error('Error storing response CID in contract via ethers:', error);
         throw new Error(`Failed to store response CID in contract: ${error instanceof Error ? error.message : String(error)}`);
       }
     } else {
       console.warn('No promptId provided from client; skipping respond() write');
+      throw new Error('PromptId is required for storing response in contract');
     }
 
-    // Step 7: Return response to client
-    console.log('=== Step 7: Returning response to client ===');
+    // Step 7: Verify IPFS storage by attempting to fetch the stored response
+    console.log('=== Step 7: Verifying IPFS storage ===');
+    try {
+      console.log('Verifying response was properly stored in IPFS...');
+      const verificationData = await fetchAndDecryptFromIPFS(responseCid);
+      if (verificationData !== aiResponse) {
+        throw new Error('IPFS verification failed: stored data does not match original response');
+      }
+      console.log('IPFS storage verification successful');
+    } catch (error) {
+      console.error('IPFS verification failed:', error);
+      throw new Error(`IPFS storage verification failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Step 8: Return response to client with confirmation details
+    console.log('=== Step 8: Returning verified response to client ===');
     
     return new Response(JSON.stringify({
       success: true,
       response: aiResponse,
+      responseCid: responseCid,
+      txHash: txHash,
+      blockNumber: blockNumber,
+      minter: minter,
+      verified: {
+        ipfsStorage: true,
+        contractStorage: true,
+        timestamp: new Date().toISOString()
+      },
       promptId: promptId,
       timestamp: new Date().toISOString(),
+      message: 'CINFT Chat completed and verified successfully'
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
