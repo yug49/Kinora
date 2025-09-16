@@ -6,10 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
+const CONTRACT_ADDRESS = '0xED58a7435F9de58dEC8E6B49001107d89D8d0Ac5';
 const CONTRACT_ABI = [
-  'function getMemory() public view returns (string memory, tuple(bool openness, bool conscientiousness, bool extraversion, bool agreeableness, bool neuroticism, bool achievement, bool compassion, bool creativity, bool security, bool adventure, bool knowledge, bool autonomy, bool community, bool skillsHobbiesFrequency, bool interestsKnowledgeFrequency, bool keyEntitiesFrequency))',
-  'function registerEntry(string memory _memory) public returns (bytes32)'
+  'function getMemory() public view returns (string memory, tuple(uint32 openness, uint32 conscientiousness, uint32 extraversion, uint32 agreeableness, uint32 neuroticism, uint32 achievement, uint32 compassion, uint32 creativity, uint32 security, uint32 adventure, uint32 knowledge, uint32 autonomy, uint32 community, uint32 skillsHobbiesFrequency, uint32 interestsKnowledgeFrequency, uint32 keyEntitiesFrequency))',
 ];
 
 serve(async (req) => {

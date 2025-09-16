@@ -6,12 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
+const CONTRACT_ADDRESS = '0xED58a7435F9de58dEC8E6B49001107d89D8d0Ac5';
 
 const CONTRACT_ABI = [
   'function getMinter(uint256 tokenId) view returns (address)',
-  'function getMemoryOfAOwner(address _owner) view returns (string, (uint32 openness,uint32 conscientiousness,uint32 extraversion,uint32 agreeableness,uint32 neuroticism,uint32 achievement,uint32 compassion,uint32 creativity,uint32 security,uint32 adventure,uint32 knowledge,uint32 autonomy,uint32 community,uint32 skillsHobbiesFrequency,uint32 interestsKnowledgeFrequency,uint32 keyEntitiesFrequency))',
-  'function respond(bytes32 _promptId, string _response) returns (string)'
+  'function getMemoryOfAOwner(address _owner) view returns (string memory, tuple(uint32 openness, uint32 conscientiousness, uint32 extraversion, uint32 agreeableness, uint32 neuroticism, uint32 achievement, uint32 compassion, uint32 creativity, uint32 security, uint32 adventure, uint32 knowledge, uint32 autonomy, uint32 community, uint32 skillsHobbiesFrequency, uint32 interestsKnowledgeFrequency, uint32 keyEntitiesFrequency))',
+  'function submitPrompt(uint256 _tokenId, string memory _prompt) returns (bytes32)',
+  'function respond(bytes32 _promptId, string memory _response) returns (string memory)',
 ];
 
 // Utility function to convert hex string to bytes for contract calls
