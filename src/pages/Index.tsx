@@ -7,7 +7,8 @@ import { JournalEntries } from '@/components/JournalEntries';
 import { PhalaChat } from '@/components/PhalaChat';
 import { IPFSTest } from '@/components/IPFSTest';
 import { AESCrypto } from '@/components/AESCrypto';
-import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield } from 'lucide-react';
+import { PromptsMonitor } from '@/components/PromptsMonitor';
+import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield, Monitor } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -36,7 +37,7 @@ const Index = () => {
           {/* Main Application Tabs */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-foreground mb-4 text-center">Main Application</h2>
-            <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto mb-6">
+            <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto mb-6">
               <TabsTrigger value="mint" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Mint NFT
@@ -48,6 +49,10 @@ const Index = () => {
               <TabsTrigger value="journal" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
                 Journal
+              </TabsTrigger>
+              <TabsTrigger value="monitor" className="flex items-center gap-2">
+                <Monitor className="h-4 w-4" />
+                Monitor
               </TabsTrigger>
             </TabsList>
           </div>
@@ -99,6 +104,12 @@ const Index = () => {
           <TabsContent value="journal" className="space-y-8">
             <div className="max-w-4xl mx-auto">
               <JournalEntries />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="monitor" className="space-y-8">
+            <div className="max-w-6xl mx-auto">
+              <PromptsMonitor />
             </div>
           </TabsContent>
           
