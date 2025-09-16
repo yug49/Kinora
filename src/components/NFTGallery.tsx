@@ -12,10 +12,10 @@ import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
 
-const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
+const CONTRACT_ADDRESS = '0xED58a7435F9de58dEC8E6B49001107d89D8d0Ac5';
 
 const CONTRACT_ABI = [
-  'function getTokenIdsOfAnOwner(address _owner) public view returns (uint256[] memory)',
+  'function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256)',
   'function getTokenIdToImageUrl(uint256 _tokenId) public view returns (string memory)',
   'function name() public view returns (string memory)',
   'function mint(string memory _imageUrl) public',
@@ -68,29 +68,30 @@ export const NFTGallery = () => {
 
       console.log('Contract initialized:', CONTRACT_ADDRESS);
 
-      // Get token IDs owned by user
-      console.log('Calling getTokenIdsOfAnOwner with address:', account);
-      const tokenIdsRaw = await contract.getTokenIdsOfAnOwner(account);
-      console.log('Raw token IDs returned:', tokenIdsRaw);
-      console.log('Token IDs type:', typeof tokenIdsRaw);
-      console.log('Token IDs constructor:', tokenIdsRaw.constructor.name);
+      // Get token balance first
+      console.log('Calling balanceOf with address:', account);
+      const balance = await contract.balanceOf(account);
+      console.log('Balance returned:', balance.toString());
       
-      // Convert Proxy/BigInt array to regular array of strings
-      const tokenIds = Array.from(tokenIdsRaw).map((id: any) => id);
-      console.log('Converted token IDs:', tokenIds);
-      console.log('Token IDs length:', tokenIds.length);
-      
-      if (tokenIds.length === 0) {
-        console.log('No token IDs found for user');
+      if (balance === 0n) {
+        console.log('No tokens found for user');
         setNfts([]);
         return;
       }
 
-      console.log('Found', tokenIds.length, 'token IDs');
+      console.log('Found', balance.toString(), 'tokens');
 
       // Get collection name
       const collectionName = await contract.name();
       console.log('Collection name:', collectionName);
+
+      // Fetch token IDs using tokenOfOwnerByIndex
+      const tokenIds = [];
+      for (let i = 0; i < balance; i++) {
+        const tokenId = await contract.tokenOfOwnerByIndex(account, i);
+        tokenIds.push(tokenId);
+        console.log('Token ID at index', i, ':', tokenId.toString());
+      }
 
       // Fetch image URLs for each token
       const nftPromises = tokenIds.map(async (tokenId: any) => {
