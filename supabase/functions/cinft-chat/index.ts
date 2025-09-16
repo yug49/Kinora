@@ -9,7 +9,7 @@ const corsHeaders = {
 const CONTRACT_ADDRESS = '0x7C6Ed37EFc7e1A2f731540fC5E1Dfacc3294b4Fc';
 
 const CONTRACT_ABI = [
-  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function getMinter(uint256 tokenId) view returns (address)',
   'function getMemoryOfAOwner(address _owner) view returns (string, (uint32 openness,uint32 conscientiousness,uint32 extraversion,uint32 agreeableness,uint32 neuroticism,uint32 achievement,uint32 compassion,uint32 creativity,uint32 security,uint32 adventure,uint32 knowledge,uint32 autonomy,uint32 community,uint32 skillsHobbiesFrequency,uint32 interestsKnowledgeFrequency,uint32 keyEntitiesFrequency))',
   'function respond(bytes32 _promptId, string _response) returns (string)'
 ];
@@ -303,35 +303,35 @@ serve(async (req) => {
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
     console.log('Contract instance created with signer');
 
-    // Step 2: Get the original owner of the CINFT
-    console.log('=== Step 2: Getting original owner ===');
+    // Step 2: Get the minter of the CINFT
+    console.log('=== Step 2: Getting minter address ===');
     
-    let owner: string;
+    let minter: string;
     let memoryCid: string;
     let personalityTraits: any;
     
     try {
-      console.log('Calling ownerOf for token ID:', tokenId);
-      const ownerAddress: string = await contract.ownerOf(BigInt(tokenId));
-      owner = ownerAddress;
-      console.log('Original owner:', owner);
+      console.log('Calling getMinter for token ID:', tokenId);
+      const minterAddress: string = await contract.getMinter(BigInt(tokenId));
+      minter = minterAddress;
+      console.log('Minter address:', minter);
 
-      if (owner.toLowerCase() !== String(userWalletAddress).toLowerCase()) {
-        console.warn('Owner mismatch: original owner differs from current user', { owner, userWalletAddress });
+      if (minter.toLowerCase() !== String(userWalletAddress).toLowerCase()) {
+        console.warn('Minter mismatch: minter differs from current user', { minter, userWalletAddress });
       }
 
     } catch (error) {
-      console.error('Error getting original owner using ethers:', error);
-      throw new Error(`Failed to get original owner: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Error getting minter using ethers:', error);
+      throw new Error(`Failed to get minter: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // Step 2b: Get memory CID and personality traits using persona agent credentials
     console.log('=== Step 2b: Getting memory and personality traits ===');
     
     try {
-      console.log('Calling getMemoryOfAOwner for owner:', owner);
+      console.log('Calling getMemoryOfAOwner for minter:', minter);
       // This call requires msg.sender to be persona agent; using signer ensures "from" is set
-      const result = await contract.getMemoryOfAOwner(owner);
+      const result = await contract.getMemoryOfAOwner(minter);
       const [cidResult, traitsResult] = result as [string, any];
 
       memoryCid = cidResult;
