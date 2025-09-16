@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, User, Clock, ArrowLeft } from 'lucide-react';
+import { MessageSquare, User, Clock, ArrowLeft, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const CONTRACT_ADDRESS = "0x90915FFa10D23f5Ee91325100B98e1a9E88E0b67";
 const TEN_CHAIN_ID = "0x111"; // 273 in hex
@@ -33,6 +36,13 @@ const CONTRACT_ABI = [
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "bytes32", "name": "_promptId", "type": "bytes32"}, {"internalType": "uint256", "name": "_price", "type": "uint256"}, {"internalType": "string", "name": "_description", "type": "string"}],
+    "name": "listPromptOnMarket",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ];
 
@@ -53,6 +63,9 @@ export const PromptsMonitor = () => {
   const [selectedPrompt, setSelectedPrompt] = useState<PromptDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [showListingDialog, setShowListingDialog] = useState(false);
+  const [listingDescription, setListingDescription] = useState('');
+  const [listingPrice, setListingPrice] = useState('');
 
   const fetchPromptIds = async () => {
     if (!isConnected || !account || !isOnTenNetwork) {
@@ -151,6 +164,49 @@ export const PromptsMonitor = () => {
     }
   };
 
+  const handleListPrompt = async () => {
+    if (!selectedPrompt || !account || !listingPrice || !listingDescription) {
+      toast({
+        title: "Error",
+        description: "Please fill all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      
+      const priceInWei = ethers.parseEther(listingPrice);
+      
+      const tx = await contract.listPromptOnMarket(
+        selectedPrompt.promptId,
+        priceInWei,
+        listingDescription
+      );
+      
+      await tx.wait();
+      
+      toast({
+        title: "Success",
+        description: "Prompt listed on market successfully!",
+      });
+      
+      setShowListingDialog(false);
+      setListingDescription('');
+      setListingPrice('');
+    } catch (error: any) {
+      console.error('Error listing prompt:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to list prompt",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     fetchPromptIds();
   }, [isConnected, account, chainId]);
@@ -193,7 +249,7 @@ export const PromptsMonitor = () => {
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
@@ -202,6 +258,15 @@ export const PromptsMonitor = () => {
             >
               <ArrowLeft className="h-4 w-4" />
               Back to List
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowListingDialog(true)}
+              className="gap-2"
+            >
+              <DollarSign className="h-4 w-4" />
+              List Prompt
             </Button>
           </div>
           <CardTitle>Prompt Details</CardTitle>
@@ -357,6 +422,42 @@ export const PromptsMonitor = () => {
             <p className="text-sm text-muted-foreground">Loading prompt details...</p>
           </div>
         )}
+        
+        <Dialog open={showListingDialog} onOpenChange={setShowListingDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>List Prompt on Market</DialogTitle>
+              <DialogDescription>
+                Set a price and description for your prompt
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  placeholder="Describe your prompt..."
+                  value={listingDescription}
+                  onChange={(e) => setListingDescription(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Price (ETH)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.001"
+                  placeholder="0.001"
+                  value={listingPrice}
+                  onChange={(e) => setListingPrice(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleListPrompt} className="w-full">
+                List in Prompt Market
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
