@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
+import ReactMarkdown from 'react-markdown';
 import {
   Dialog,
   DialogContent,
@@ -151,7 +152,7 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col bg-gradient-card border-border/50">
+      <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col bg-gradient-card border-border/50">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-3">
             <img
@@ -173,7 +174,7 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
         </DialogHeader>
 
         {/* Chat Area */}
-        <ScrollArea className="flex-1 px-4 py-4 min-h-[200px]">
+        <ScrollArea className="flex-1 px-4 py-4 min-h-0">
           <div className="space-y-4">
             {/* Current Prompt Display */}
             {currentPrompt && (
@@ -226,7 +227,9 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
                 </div>
                 <div className="flex-1 max-w-[80%]">
                   <div className="bg-muted rounded-lg p-3">
-                    <p className="text-sm whitespace-pre-wrap">{currentResponse}</p>
+                    <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown>{currentResponse}</ReactMarkdown>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 px-1">
                     {new Date().toLocaleTimeString()}
