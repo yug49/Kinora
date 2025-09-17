@@ -33,12 +33,32 @@ export const useWallet = () => {
     try {
       if (window.ethereum) {
         const provider = new ethers.BrowserProvider(window.ethereum);
+        
+        // Ensure we're on TEN testnet before fetching balance
+        const network = await provider.getNetwork();
+        console.log('Current network:', network.chainId.toString(), 'Expected:', TEN_CHAIN_ID);
+        
+        if (Number(network.chainId) !== TEN_CHAIN_ID) {
+          console.log('Not on TEN network, balance will be 0');
+          setWallet(prev => ({ ...prev, balance: '0.0000' }));
+          return;
+        }
+        
         const balance = await provider.getBalance(account);
+        console.log('Raw balance (wei):', balance.toString());
+        
         const balanceInEth = ethers.formatEther(balance);
-        setWallet(prev => ({ ...prev, balance: parseFloat(balanceInEth).toFixed(4) }));
+        console.log('Formatted balance (ETH):', balanceInEth);
+        
+        // Ensure we don't show unrealistic balances
+        const numBalance = parseFloat(balanceInEth);
+        const displayBalance = numBalance > 1000000 ? '0.0000' : numBalance.toFixed(4);
+        
+        setWallet(prev => ({ ...prev, balance: displayBalance }));
       }
     } catch (error) {
       console.error('Error fetching balance:', error);
+      setWallet(prev => ({ ...prev, balance: '0.0000' }));
     }
   };
 
@@ -76,6 +96,25 @@ export const useWallet = () => {
         throw new Error('MetaMask provider not available');
       }
 
+      // First try to switch to TEN network
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: `0x${TEN_CHAIN_ID.toString(16)}` }],
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          // Chain not added to MetaMask - ask user to add it manually
+          setWallet(prev => ({ 
+            ...prev, 
+            error: 'Please add TEN Testnet (Chain ID 8443) to your wallet manually',
+            isConnecting: false
+          }));
+          return;
+        }
+        // If it's not a "chain not found" error, continue anyway
+      }
+
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
@@ -86,6 +125,16 @@ export const useWallet = () => {
 
       const account = accounts[0];
       const numericChainId = parseInt(chainId, 16);
+
+      // Only allow TEN testnet
+      if (numericChainId !== TEN_CHAIN_ID) {
+        setWallet(prev => ({
+          ...prev,
+          error: `Please switch to TEN Testnet (Chain ID ${TEN_CHAIN_ID})`,
+          isConnecting: false,
+        }));
+        return;
+      }
 
       setWallet(prev => ({
         ...prev,
