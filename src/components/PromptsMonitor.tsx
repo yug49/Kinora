@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const CONTRACT_ADDRESS = "0x90915FFa10D23f5Ee91325100B98e1a9E88E0b67";
+const CONTRACT_ADDRESS = "0x35392F4D2859bA37bE04F32082E5f83caE29C1C1";
 const TEN_CHAIN_ID = "0x111"; // 273 in hex
 
 // Minimal ABI for the functions we need

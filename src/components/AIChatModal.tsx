@@ -28,7 +28,7 @@ interface AIChatModalProps {
   onClose: () => void;
 }
 
-const CONTRACT_ADDRESS = '0x90915FFa10D23f5Ee91325100B98e1a9E88E0b67';
+const CONTRACT_ADDRESS = '0x35392F4D2859bA37bE04F32082E5f83caE29C1C1';
 const CONTRACT_ABI = [
   'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32 promptId)',
 ];

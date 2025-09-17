@@ -12,7 +12,7 @@ import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
 
-const CONTRACT_ADDRESS = '0x90915FFa10D23f5Ee91325100B98e1a9E88E0b67';
+const CONTRACT_ADDRESS = '0x35392F4D2859bA37bE04F32082E5f83caE29C1C1';
 
 const CONTRACT_ABI = [
   'function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256)',
