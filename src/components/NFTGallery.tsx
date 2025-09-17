@@ -328,13 +328,12 @@ export const NFTGallery = () => {
       const receipt = await tx.wait();
       console.log('Purchase confirmed:', tx.hash);
       
-      // The return value should be in the transaction receipt or we need to call the function again
-      // Since it's a payable function, we get the prompt from the return value
+      // Get the returned prompt content using staticCall
+      const prompt = await contract.purchasePrompt.staticCall(selectedPrompt.promptId, { value: priceInWei });
+      
       toast.success('Prompt purchased successfully!');
       
-      // For now, we'll show the prompt ID as purchased. In a real implementation,
-      // you might need to decode the return value from the transaction receipt
-      setPurchasedPrompt(`Prompt purchased! Prompt ID: ${selectedPrompt.promptId}`);
+      setPurchasedPrompt(prompt);
       setSelectedPrompt(null);
       
     } catch (error) {
@@ -590,8 +589,8 @@ export const NFTGallery = () => {
                 <p className="text-sm text-green-700 mb-3">
                   ⚠️ Copy this prompt now - it won't be saved anywhere. If you don't copy it, you may need to buy it again.
                 </p>
-                <div className="bg-white p-3 rounded border">
-                  <p className="text-sm">{purchasedPrompt}</p>
+                <div className="bg-muted p-3 rounded border">
+                  <p className="text-sm whitespace-pre-wrap">{purchasedPrompt}</p>
                 </div>
                 <Button
                   onClick={() => copyToClipboard(purchasedPrompt)}
