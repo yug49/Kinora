@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const CONTRACT_ADDRESS = "0x35392F4D2859bA37bE04F32082E5f83caE29C1C1";
-const TEN_CHAIN_ID = "0x111"; // 273 in hex
+const TEN_CHAIN_ID = "0x20FB"; // 8443 in hex
 
 // Minimal ABI for the functions we need
 const CONTRACT_ABI = [
