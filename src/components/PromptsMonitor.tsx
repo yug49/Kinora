@@ -352,6 +352,44 @@ export const PromptsMonitor = () => {
               )}
             </div>
           </ScrollArea>
+
+          {/* Listing Dialog */}
+          <Dialog open={showListingDialog} onOpenChange={setShowListingDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>List Prompt on Market</DialogTitle>
+                <DialogDescription>
+                  Set a price and description for your prompt
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    placeholder="Describe your prompt..."
+                    value={listingDescription}
+                    onChange={(e) => setListingDescription(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price (ETH)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.001"
+                    placeholder="0.001"
+                    value={listingPrice}
+                    onChange={(e) => setListingPrice(e.target.value)}
+                  />
+                </div>
+                <Button onClick={handleListPrompt} className="w-full">
+                  List in Prompt Market
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
         </CardContent>
       </Card>
     );
@@ -423,41 +461,6 @@ export const PromptsMonitor = () => {
           </div>
         )}
         
-        <Dialog open={showListingDialog} onOpenChange={setShowListingDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>List Prompt on Market</DialogTitle>
-              <DialogDescription>
-                Set a price and description for your prompt
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  placeholder="Describe your prompt..."
-                  value={listingDescription}
-                  onChange={(e) => setListingDescription(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Price (ETH)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.001"
-                  placeholder="0.001"
-                  value={listingPrice}
-                  onChange={(e) => setListingPrice(e.target.value)}
-                />
-              </div>
-              <Button onClick={handleListPrompt} className="w-full">
-                List in Prompt Market
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </CardContent>
     </Card>
   );
