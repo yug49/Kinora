@@ -30,6 +30,12 @@ Your task is to analyze the user's 'new' memory and 'old' memories to generate a
 1.  **personality_traits**: An object with 16 keys. Each key's value must be the string "yes" or "no".
 2.  **core_memories**: A JSON array of strings. This array must contain up to 50 of the user's most significant memories, curated from the 'new' and 'old' inputs. The items in the array MUST be strings, not a numbered list.
 
+CRITICAL INSTRUCTIONS FOR CORE MEMORIES:
+- ALWAYS preserve personal data as core memories: name, date of birth, place of birth, family background, real life close experiences, and any identifying information
+- Look for privacy indicators like "don't tell it to anyone", "keep this private", "this is confidential", "between us", "don't share this" to identify user comfort zones
+- When storing memories that contain privacy indicators, ALWAYS include the privacy phrase with the memory (e.g., "My real name is John Smith, don't tell it to anyone")
+- Personal identifying information takes priority over other memories - never exclude names, birthdates, family details, or private experiences even if the 50-memory limit is reached
+
 ---
 EXAMPLE:
 INPUT:
