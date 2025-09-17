@@ -10,7 +10,7 @@ export interface WalletState {
   error: string | null;
 }
 
-const TEN_CHAIN_ID = 443;
+const TEN_CHAIN_ID = 8443;
 
 export const useWallet = () => {
   const [wallet, setWallet] = useState<WalletState>({

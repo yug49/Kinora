@@ -46,7 +46,7 @@ export const Header = () => {
           <Alert className="absolute top-24 left-1/2 transform -translate-x-1/2 w-96 border-destructive bg-destructive/10">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
-              <span>Switch to TEN Network (Chain ID 443)</span>
+              <span>Switch to TEN Network (Chain ID 8443)</span>
               <Button 
                 variant="outline" 
                 size="sm" 
