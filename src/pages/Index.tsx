@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Header } from '@/components/Header';
 import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
@@ -9,7 +10,7 @@ import { IPFSTest } from '@/components/IPFSTest';
 import { AESCrypto } from '@/components/AESCrypto';
 import { PromptsMonitor } from '@/components/PromptsMonitor';
 import { PromptListing } from '@/components/PromptListing';
-import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield, Monitor, ShoppingBag } from 'lucide-react';
+import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield, Monitor, ShoppingBag, Store, Archive } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -38,7 +39,7 @@ const Index = () => {
           {/* Main Application Tabs */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-foreground mb-4 text-center">Main Application</h2>
-            <TabsList className="grid w-full grid-cols-5 max-w-4xl mx-auto mb-6">
+            <TabsList className="grid w-full grid-cols-7 max-w-6xl mx-auto mb-6">
               <TabsTrigger value="mint" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Mint NFT
@@ -58,6 +59,14 @@ const Index = () => {
               <TabsTrigger value="listing" className="flex items-center gap-2">
                 <ShoppingBag className="h-4 w-4" />
                 Prompt Listing
+              </TabsTrigger>
+              <TabsTrigger value="marketplace" className="flex items-center gap-2">
+                <Store className="h-4 w-4" />
+                Marketplace
+              </TabsTrigger>
+              <TabsTrigger value="legacy" className="flex items-center gap-2">
+                <Archive className="h-4 w-4" />
+                Legacy
               </TabsTrigger>
             </TabsList>
           </div>
@@ -121,6 +130,64 @@ const Index = () => {
           <TabsContent value="listing" className="space-y-8">
             <div className="max-w-6xl mx-auto">
               <PromptListing />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="marketplace" className="space-y-8">
+            <div className="max-w-4xl mx-auto">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Store className="h-6 w-6 text-primary" />
+                    NFT Marketplace
+                  </CardTitle>
+                  <CardDescription>
+                    Advanced trading platform for NFT assets
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center py-12">
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-bold text-primary">Coming Soon in Session 5</h3>
+                    <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                      Our marketplace will implement Vickrey's second-price auction method, ensuring fair and efficient price discovery while protecting bidder privacy. This mechanism encourages truthful bidding and creates optimal market outcomes for both buyers and sellers.
+                    </p>
+                    <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Features: Sealed-bid auctions, Privacy-preserving bidding, Automated price discovery, Fair market mechanisms
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="legacy" className="space-y-8">
+            <div className="max-w-4xl mx-auto">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Archive className="h-6 w-6 text-primary" />
+                    Legacy System
+                  </CardTitle>
+                  <CardDescription>
+                    Archive and migration tools for historical data
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center py-12">
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-bold text-primary">Coming Soon in Session 6</h3>
+                    <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                      Access legacy systems, archived NFTs, and migration tools. This section will provide comprehensive support for historical data management and seamless transitions between system versions.
+                    </p>
+                    <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Features: Data archival, System migration, Historical records, Backward compatibility
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
           
