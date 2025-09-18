@@ -170,9 +170,6 @@ const Index = () => {
                     <Archive className="h-6 w-6 text-primary" />
                     Legacy System
                   </CardTitle>
-                  <CardDescription>
-                    Archive and migration tools for historical data
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="text-center py-12">
                   <div className="space-y-4">
@@ -180,11 +177,6 @@ const Index = () => {
                     <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                       A system where users can pre-set nominees and must ping the servers once a year. If they don't ping, their nominees will receive their CINFTs and any money left by the user, as they are considered deceased.
                     </p>
-                    <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Features: Data archival, System migration, Historical records, Backward compatibility
-                      </p>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
