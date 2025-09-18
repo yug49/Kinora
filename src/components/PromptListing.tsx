@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, DollarSign, Edit, Trash2, Copy, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -389,15 +390,16 @@ export const PromptListing = () => {
                 <div className="flex gap-4">
                   <div className="flex-1 space-y-2">
                     <Label htmlFor="searchType">Search by</Label>
-                    <select 
-                      className="w-full p-2 border rounded"
-                      value={searchType}
-                      onChange={(e) => setSearchType(e.target.value as 'address' | 'tokenId' | 'promptId')}
-                    >
-                      <option value="address">Minter Address</option>
-                      <option value="tokenId">Token ID</option>
-                      <option value="promptId">Prompt ID</option>
-                    </select>
+                    <Select value={searchType} onValueChange={(value) => setSearchType(value as 'address' | 'tokenId' | 'promptId')}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select search type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="address">Minter Address</SelectItem>
+                        <SelectItem value="tokenId">Token ID</SelectItem>
+                        <SelectItem value="promptId">Prompt ID</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex-2 space-y-2">
                     <Label htmlFor="searchValue">
