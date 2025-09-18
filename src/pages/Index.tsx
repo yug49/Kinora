@@ -178,7 +178,7 @@ const Index = () => {
                   <div className="space-y-4">
                     <h3 className="text-2xl font-bold text-primary">Coming Soon in Session 6</h3>
                     <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                      Access legacy systems, archived NFTs, and migration tools. This section will provide comprehensive support for historical data management and seamless transitions between system versions.
+                      A system where users can pre-set nominees and must ping the servers once a year. If they don't ping, their nominees will receive their CINFTs and any money left by the user, as they are considered deceased.
                     </p>
                     <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                       <p className="text-sm text-muted-foreground">
