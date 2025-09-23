@@ -266,9 +266,9 @@ export const Marketplace = () => {
     }
   };
 
-  // Fetch user's available NFTs (not on sale)
+  // Fetch user's available NFTs (show all NFTs, let contract handle sale status)
   const fetchAvailableNFTs = async () => {
-    console.log('=== Fetching Available NFTs Debug ===');
+    console.log('=== Fetching User NFTs Debug ===');
     console.log('Wallet state:', { isConnected, isOnTenNetwork, account });
     
     if (!isConnected || !isOnTenNetwork || !account) {
@@ -276,7 +276,7 @@ export const Marketplace = () => {
       return;
     }
 
-    console.log('Starting available NFTs fetch for account:', account);
+    console.log('Starting NFTs fetch for account:', account);
 
     try {
       if (!window.ethereum) {
@@ -284,12 +284,10 @@ export const Marketplace = () => {
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, provider);
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
 
-      console.log('Contracts initialized');
+      console.log('Contract initialized');
       console.log('CINFT Contract:', CINFT_CONTRACT_ADDRESS);
-      console.log('Auction Contract:', AUCTION_CONTRACT_ADDRESS);
 
       // Get user's balance and token IDs
       console.log('Calling balanceOf with address:', account);
@@ -313,28 +311,10 @@ export const Marketplace = () => {
 
       console.log('All token IDs:', tokenIds.map(t => t.toString()));
 
-      // Filter out NFTs that are on sale
-      console.log('Checking which NFTs are on sale...');
-      const availableTokens = [];
-      for (const tokenId of tokenIds) {
-        const isOnSale = await auctionContract.isNftOnSale(tokenId);
-        console.log('Token', tokenId.toString(), 'is on sale:', isOnSale);
-        if (!isOnSale) {
-          availableTokens.push(tokenId);
-        }
-      }
-
-      console.log('Available tokens (not on sale):', availableTokens.map(t => t.toString()));
-
-      if (availableTokens.length === 0) {
-        console.log('All NFTs are already on sale');
-        setAvailableNFTs([]);
-        return;
-      }
-
-      console.log('Fetching details for available tokens...');
+      // Fetch details for all tokens (don't filter by sale status)
+      console.log('Fetching details for all tokens...');
       const nftsData = await Promise.all(
-        availableTokens.map(async (tokenId: bigint) => {
+        tokenIds.map(async (tokenId: bigint) => {
           try {
             console.log('Fetching details for token', tokenId.toString());
             const [imageUrl, ratings] = await Promise.all([
@@ -365,10 +345,10 @@ export const Marketplace = () => {
       );
 
       const filteredNFTs = nftsData.filter(nft => nft !== null) as UserNFT[];
-      console.log('Final available NFTs:', filteredNFTs);
+      console.log('Final user NFTs:', filteredNFTs);
       setAvailableNFTs(filteredNFTs);
     } catch (err) {
-      console.error('Error fetching available NFTs:', err);
+      console.error('Error fetching user NFTs:', err);
       console.error('Error details:', {
         message: err instanceof Error ? err.message : 'Unknown error',
         stack: err instanceof Error ? err.stack : undefined,
@@ -376,7 +356,7 @@ export const Marketplace = () => {
         isConnected,
         isOnTenNetwork
       });
-      toast.error('Failed to fetch available NFTs');
+      toast.error('Failed to fetch your NFTs');
     }
   };
 
@@ -740,12 +720,9 @@ export const Marketplace = () => {
           {availableNFTs.length === 0 ? (
             <div className="text-center py-8">
               <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No available NFTs to put on sale</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No CINFTs found</h3>
               <p className="text-muted-foreground text-sm">
-                Either you don't own any CINFTs, or all your CINFTs are already on sale.
-              </p>
-              <p className="text-muted-foreground text-xs mt-2">
-                Check the browser console for detailed debugging information.
+                You don't own any CINFTs yet. Mint some CINFTs first to put them on sale.
               </p>
             </div>
           ) : (
