@@ -374,8 +374,8 @@ export const Marketplace = () => {
     setShowSellDialog(true);
   };
 
-  const handlePutOnSale = () => {
-    fetchAvailableNFTs();
+  const handlePutOnSale = async () => {
+    await fetchAvailableNFTs();
     setShowSelectNFTDialog(true);
   };
 
