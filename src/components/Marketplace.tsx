@@ -29,7 +29,6 @@ const CINFT_ABI = [
 const AUCTION_ABI = [
   'function getNftsOnSale() public view returns(uint256[] memory)',
   'function isNftOnSale(uint256 _tokenId) public view returns(bool)',
-  'function getListOfNftsBySeller(address _seller) public view returns(uint256[] memory)',
   'function getNftsBidEndTime(uint256 _tokenId) public view returns(uint256)',
   'function getMinBid(uint256 _tokenId) public view returns(uint256)',
   'function getDescription(uint256 _tokenId) public view returns(string memory)',
@@ -255,44 +254,11 @@ export const Marketplace = () => {
     setLoadingUserSales(true);
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, provider);
-      const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
-
-      // Get user's NFTs on sale
-      const tokenIds = await auctionContract.getListOfNftsBySeller(account);
-      
-      const nftsData = await Promise.all(
-        tokenIds.map(async (tokenId: bigint) => {
-          try {
-            const [imageUrl, description, minBid, endTime, ratings] = await Promise.all([
-              cinftContract.getTokenIdToImageUrl(tokenId),
-              auctionContract.getDescription(tokenId),
-              auctionContract.getMinBid(tokenId),
-              auctionContract.getNftsBidEndTime(tokenId),
-              cinftContract.getRatingOfAToken(tokenId)
-            ]);
-
-            return {
-              tokenId: tokenId.toString(),
-              name: `CINFT #${tokenId.toString()}`,
-              image: imageUrl,
-              description,
-              likes: Number(ratings[0]),
-              dislikes: Number(ratings[1]),
-              isOnSale: true,
-              minBid: ethers.formatEther(minBid),
-              timeLeft: formatTimeLeft(Number(endTime)),
-              endTime: Number(endTime)
-            };
-          } catch (err) {
-            console.error(`Error fetching data for token ${tokenId}:`, err);
-            return null;
-          }
-        })
-      );
-
-      setUserNFTsOnSale(nftsData.filter(nft => nft !== null) as UserNFT[]);
+      // NOTE: The deployed contract doesn't have getListOfNftsBySeller function
+      // This is a limitation of the current contract deployment
+      // For now, we'll set empty array and show a message to the user
+      console.log('getListOfNftsBySeller function not available in deployed contract');
+      setUserNFTsOnSale([]);
     } catch (err) {
       console.error('Error fetching user NFTs on sale:', err);
     } finally {
@@ -620,8 +586,13 @@ export const Marketplace = () => {
             ) : userNFTsOnSale.length === 0 ? (
               <div className="text-center py-12">
                 <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No NFTs on Sale</h3>
-                <p className="text-muted-foreground">You haven't put any NFTs on sale yet</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Cannot Load User Sales</h3>
+                <p className="text-muted-foreground mb-2">
+                  The deployed contract is missing the `getListOfNftsBySeller` function.
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Contact the contract developer to add this function or use the live market to view all auctions.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
