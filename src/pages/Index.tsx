@@ -10,6 +10,7 @@ import { IPFSTest } from '@/components/IPFSTest';
 import { AESCrypto } from '@/components/AESCrypto';
 import { PromptsMonitor } from '@/components/PromptsMonitor';
 import { PromptListing } from '@/components/PromptListing';
+import { Marketplace } from '@/components/Marketplace';
 import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield, Monitor, ShoppingBag, Store, Archive } from 'lucide-react';
 
 const Index = () => {
@@ -134,31 +135,8 @@ const Index = () => {
           </TabsContent>
           
           <TabsContent value="marketplace" className="space-y-8">
-            <div className="max-w-4xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Store className="h-6 w-6 text-primary" />
-                    NFT Marketplace
-                  </CardTitle>
-                  <CardDescription>
-                    Advanced trading platform for NFT assets
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center py-12">
-                  <div className="space-y-4">
-                    <h3 className="text-2xl font-bold text-primary">Coming Soon in Session 5</h3>
-                    <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                      Our marketplace will implement Vickrey's second-price auction method, ensuring fair and efficient price discovery while protecting bidder privacy. This mechanism encourages truthful bidding and creates optimal market outcomes for both buyers and sellers.
-                    </p>
-                    <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Features: Sealed-bid auctions, Privacy-preserving bidding, Automated price discovery, Fair market mechanisms
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="max-w-6xl mx-auto">
+              <Marketplace />
             </div>
           </TabsContent>
           
