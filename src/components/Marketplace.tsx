@@ -169,6 +169,7 @@ export const Marketplace = () => {
     tokenId: '',
     minBid: '',
     bidTimeInDays: '7',
+    bidTimeInMinutes: '0',
     description: ''
   });
   const [showBidDialog, setShowBidDialog] = useState(false);
@@ -372,6 +373,7 @@ export const Marketplace = () => {
       tokenId: nft.tokenId,
       minBid: '',
       bidTimeInDays: '7',
+      bidTimeInMinutes: '0',
       description: nft.description
     });
     setShowSellDialog(true);
@@ -430,7 +432,7 @@ export const Marketplace = () => {
 
       // Then put the NFT on sale
       const minBidInWei = ethers.parseEther(sellForm.minBid);
-      const bidTimeInSeconds = parseInt(sellForm.bidTimeInDays) * 24 * 60 * 60;
+      const bidTimeInSeconds = (parseInt(sellForm.bidTimeInDays) * 24 * 60 * 60) + (parseInt(sellForm.bidTimeInMinutes) * 60);
       
       const tx = await auctionContract.putNftOnSale(
         BigInt(sellForm.tokenId),
@@ -444,7 +446,7 @@ export const Marketplace = () => {
       toast.success('NFT listed successfully!');
       
       setShowSellDialog(false);
-      setSellForm({ tokenId: '', minBid: '', bidTimeInDays: '7', description: '' });
+      setSellForm({ tokenId: '', minBid: '', bidTimeInDays: '7', bidTimeInMinutes: '0', description: '' });
       fetchMarketNFTs();
       fetchUserNFTsOnSale();
       
@@ -791,16 +793,33 @@ export const Marketplace = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bidTime">Auction Duration (Days)</Label>
-              <Input
-                id="bidTime"
-                type="number"
-                min="1"
-                max="30"
-                value={sellForm.bidTimeInDays}
-                onChange={(e) => setSellForm({...sellForm, bidTimeInDays: e.target.value})}
-                placeholder="7"
-              />
+              <Label>Auction Duration</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="bidTimeDays" className="text-sm text-muted-foreground">Days</Label>
+                  <Input
+                    id="bidTimeDays"
+                    type="number"
+                    min="0"
+                    max="30"
+                    value={sellForm.bidTimeInDays}
+                    onChange={(e) => setSellForm({...sellForm, bidTimeInDays: e.target.value})}
+                    placeholder="7"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bidTimeMinutes" className="text-sm text-muted-foreground">Minutes</Label>
+                  <Input
+                    id="bidTimeMinutes"
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={sellForm.bidTimeInMinutes}
+                    onChange={(e) => setSellForm({...sellForm, bidTimeInMinutes: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -826,7 +845,7 @@ export const Marketplace = () => {
               <Button 
                 className="flex-1"
                 onClick={submitSale}
-                disabled={selling || !sellForm.minBid || !sellForm.description || !sellForm.bidTimeInDays}
+                disabled={selling || !sellForm.minBid || !sellForm.description || (!sellForm.bidTimeInDays && !sellForm.bidTimeInMinutes)}
               >
                 {selling ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
