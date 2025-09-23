@@ -515,15 +515,72 @@ export const Marketplace = () => {
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, signer);
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, signer);
 
-      // First approve the auction contract to transfer the NFT
-      const approveTx = await cinftContract.approve(AUCTION_CONTRACT_ADDRESS, BigInt(sellForm.tokenId));
-      toast.success('Approval sent! Waiting for confirmation...');
-      await approveTx.wait();
+      console.log('=== Starting NFT Sale Process ===');
+      console.log('Token ID:', sellForm.tokenId);
+      console.log('Min Bid:', sellForm.minBid);
+      console.log('Description:', sellForm.description);
+      console.log('Auction Address:', AUCTION_CONTRACT_ADDRESS);
+
+      // Check if NFT is already on sale
+      const isOnSale = await auctionContract.isNftOnSale(BigInt(sellForm.tokenId));
+      console.log('Is NFT already on sale?', isOnSale);
+      
+      if (isOnSale) {
+        toast.error('This NFT is already on sale');
+        return;
+      }
+
+      // Check current owner of the NFT
+      const owner = await cinftContract.ownerOf(BigInt(sellForm.tokenId));
+      const currentAccount = await signer.getAddress();
+      console.log('NFT Owner:', owner);
+      console.log('Current Account:', currentAccount);
+      
+      if (owner.toLowerCase() !== currentAccount.toLowerCase()) {
+        toast.error('You do not own this NFT');
+        return;
+      }
+
+      // Check current approval
+      const currentApproval = await cinftContract.getApproved(BigInt(sellForm.tokenId));
+      console.log('Current approval:', currentApproval);
+      console.log('Auction contract:', AUCTION_CONTRACT_ADDRESS);
+
+      // First approve the auction contract to transfer the NFT (only if not already approved)
+      if (currentApproval.toLowerCase() !== AUCTION_CONTRACT_ADDRESS.toLowerCase()) {
+        console.log('Approving auction contract...');
+        const approveTx = await cinftContract.approve(AUCTION_CONTRACT_ADDRESS, BigInt(sellForm.tokenId));
+        toast.success('Approval sent! Waiting for confirmation...');
+        await approveTx.wait();
+        console.log('Approval confirmed');
+      } else {
+        console.log('Already approved');
+      }
 
       // Then put the NFT on sale
       const minBidInWei = ethers.parseEther(sellForm.minBid);
-      const bidTimeInSeconds = (parseInt(sellForm.bidTimeInDays) * 24 * 60 * 60) + (parseInt(sellForm.bidTimeInMinutes) * 60);
+      const bidTimeInSeconds = (parseInt(sellForm.bidTimeInDays || '0') * 24 * 60 * 60) + (parseInt(sellForm.bidTimeInMinutes || '0') * 60);
       
+      console.log('Sale parameters:');
+      console.log('- Token ID:', BigInt(sellForm.tokenId));
+      console.log('- Min Bid (Wei):', minBidInWei.toString());
+      console.log('- Bid Time (seconds):', bidTimeInSeconds);
+      console.log('- Description:', sellForm.description);
+
+      // Estimate gas first to catch any revert errors early
+      try {
+        const gasEstimate = await auctionContract.putNftOnSale.estimateGas(
+          BigInt(sellForm.tokenId),
+          minBidInWei,
+          bidTimeInSeconds,
+          sellForm.description
+        );
+        console.log('Gas estimate:', gasEstimate.toString());
+      } catch (gasError) {
+        console.error('Gas estimation failed:', gasError);
+        throw new Error('Transaction would fail. Please check if NFT is already on sale or contact support.');
+      }
+
       const tx = await auctionContract.putNftOnSale(
         BigInt(sellForm.tokenId),
         minBidInWei,
@@ -542,7 +599,19 @@ export const Marketplace = () => {
       
     } catch (err) {
       console.error('Sale failed:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to list NFT');
+      if (err instanceof Error) {
+        if (err.message.includes('already on sale')) {
+          toast.error('This NFT is already on sale');
+        } else if (err.message.includes('not approved')) {
+          toast.error('Please approve the contract to transfer your NFT');
+        } else if (err.message.includes('not the owner')) {
+          toast.error('You do not own this NFT');
+        } else {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error('Failed to list NFT');
+      }
     } finally {
       setSelling(false);
     }
