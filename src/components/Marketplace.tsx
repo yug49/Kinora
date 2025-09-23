@@ -34,7 +34,8 @@ const AUCTION_ABI = [
   'function getDescription(uint256 _tokenId) public view returns(string memory)',
   'function bid(uint256 _tokenId, uint256 _bid) public payable',
   'function putNftOnSale(uint256 _tokenId, uint256 _minBid, uint256 _bidTimeInSeconds, string memory _description) public',
-  'function completeAuction(uint256 _tokenId) public'
+  'function completeAuction(uint256 _tokenId) public',
+  'function getListOfNftsBySeller(address _seller) public view returns(uint256[] memory)'
 ];
 
 interface MarketNFT {
@@ -250,18 +251,107 @@ export const Marketplace = () => {
 
   // Fetch user's NFTs on sale
   const fetchUserNFTsOnSale = async () => {
-    if (!isConnected || !isOnTenNetwork || !account) return;
+    console.log('=== Fetching User NFTs on Sale Debug ===');
+    console.log('Wallet state:', { isConnected, isOnTenNetwork, account });
+    
+    if (!isConnected || !isOnTenNetwork || !account) {
+      console.log('Conditions not met, skipping fetch');
+      return;
+    }
 
+    console.log('Starting user NFTs on sale fetch for account:', account);
     setLoadingUserSales(true);
     
     try {
-      // NOTE: The deployed contract doesn't have getListOfNftsBySeller function
-      // This is a limitation of the current contract deployment
-      // For now, we'll set empty array and show a message to the user
-      console.log('getListOfNftsBySeller function not available in deployed contract');
-      setUserNFTsOnSale([]);
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, provider);
+      const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
+
+      console.log('Contracts initialized');
+      console.log('Calling getListOfNftsBySeller with address:', account);
+
+      // Get user's NFTs on sale using their wallet address
+      const tokenIds = await auctionContract.getListOfNftsBySeller(account);
+      console.log('Token IDs on sale:', tokenIds.map((id: bigint) => id.toString()));
+
+      if (tokenIds.length === 0) {
+        console.log('No NFTs on sale for user');
+        setUserNFTsOnSale([]);
+        return;
+      }
+
+      // Fetch details for each NFT on sale
+      console.log('Fetching details for NFTs on sale...');
+      const nftsData = await Promise.all(
+        tokenIds.map(async (tokenId: bigint) => {
+          try {
+            console.log('Fetching details for token on sale:', tokenId.toString());
+            
+            // Get NFT details from CINFT contract
+            const [imageUrl, ratings] = await Promise.all([
+              cinftContract.getTokenIdToImageUrl(tokenId),
+              cinftContract.getRatingOfAToken(tokenId)
+            ]);
+
+            // Get auction details from auction contract
+            const [minBid, endTime, description] = await Promise.all([
+              auctionContract.getMinBid(tokenId),
+              auctionContract.getNftsBidEndTime(tokenId),
+              auctionContract.getDescription(tokenId)
+            ]);
+
+            console.log('NFT details for token', tokenId.toString(), ':', {
+              imageUrl,
+              minBid: ethers.formatEther(minBid),
+              endTime: Number(endTime),
+              description,
+              likes: Number(ratings[0]),
+              dislikes: Number(ratings[1])
+            });
+
+            // Calculate time left
+            const now = Math.floor(Date.now() / 1000);
+            const timeLeftSeconds = Number(endTime) - now;
+            const timeLeft = timeLeftSeconds > 0 
+              ? `${Math.floor(timeLeftSeconds / 86400)}d ${Math.floor((timeLeftSeconds % 86400) / 3600)}h ${Math.floor((timeLeftSeconds % 3600) / 60)}m`
+              : 'Expired';
+
+            return {
+              tokenId: tokenId.toString(),
+              name: `CINFT #${tokenId.toString()}`,
+              image: imageUrl,
+              description: description || 'No description available',
+              minBid: ethers.formatEther(minBid),
+              timeLeft,
+              endTime: Number(endTime),
+              likes: Number(ratings[0]),
+              dislikes: Number(ratings[1])
+            };
+          } catch (error) {
+            console.error('Error fetching details for token', tokenId.toString(), ':', error);
+            return null;
+          }
+        })
+      );
+
+      const filteredNFTs = nftsData.filter(nft => nft !== null) as UserNFT[];
+      console.log('Final user NFTs on sale:', filteredNFTs);
+      setUserNFTsOnSale(filteredNFTs);
+
     } catch (err) {
       console.error('Error fetching user NFTs on sale:', err);
+      console.error('Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        account,
+        isConnected,
+        isOnTenNetwork
+      });
+      toast.error('Failed to fetch your NFTs on sale');
     } finally {
       setLoadingUserSales(false);
     }
@@ -625,12 +715,9 @@ export const Marketplace = () => {
             ) : userNFTsOnSale.length === 0 ? (
               <div className="text-center py-12">
                 <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Cannot Load User Sales</h3>
-                <p className="text-muted-foreground mb-2">
-                  The deployed contract is missing the `getListOfNftsBySeller` function.
-                </p>
-                <p className="text-muted-foreground text-sm">
-                  Contact the contract developer to add this function or use the live market to view all auctions.
+                <h3 className="text-xl font-semibold text-foreground mb-2">No NFTs on Sale</h3>
+                <p className="text-muted-foreground">
+                  You don't have any NFTs currently listed for sale.
                 </p>
               </div>
             ) : (
