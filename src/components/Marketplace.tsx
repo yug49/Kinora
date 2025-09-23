@@ -72,7 +72,8 @@ interface NFTCardProps {
 }
 
 const NFTCard = ({ nft, type, onBid, onSell, onComplete }: NFTCardProps) => {
-  const isExpired = type === 'user-on-sale' && 'endTime' in nft && Date.now() / 1000 > nft.endTime!;
+  // More robust expiration check
+  const isExpired = type === 'user-on-sale' && 'endTime' in nft && nft.timeLeft === 'Expired';
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
