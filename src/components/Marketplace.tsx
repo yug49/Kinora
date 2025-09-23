@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 
 // Contract addresses
 const CINFT_CONTRACT_ADDRESS = '0x35392F4D2859bA37bE04F32082E5f83caE29C1C1';
-const AUCTION_CONTRACT_ADDRESS = '0xA6E851163Af000DFE262eC866364eF2473AA75b3';
+const AUCTION_CONTRACT_ADDRESS = '0x5A4ec10C4bF95b25eff7083C4240dE757417063a';
 
 // Contract ABIs
 const CINFT_ABI = [
@@ -35,7 +35,7 @@ const AUCTION_ABI = [
   'function bid(uint256 _tokenId, uint256 _bid) public payable',
   'function putNftOnSale(uint256 _tokenId, uint256 _minBid, uint256 _bidTimeInSeconds, string memory _description) public',
   'function completeAuction(uint256 _tokenId) public',
-  'function s_seller(uint256 _tokenId) public view returns(address)'
+  'function getListOfNftsBySeller(address _seller) public view returns(uint256[] memory)'
 ];
 
 interface MarketNFT {
@@ -272,22 +272,11 @@ export const Marketplace = () => {
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
 
       console.log('Contracts initialized');
-      console.log('Getting all NFTs on sale and filtering by seller:', account);
+      console.log('Calling getListOfNftsBySeller with address:', account);
 
-      // Get all NFTs on sale and filter by seller
-      const allTokenIds = await auctionContract.getNftsOnSale();
-      console.log('All NFTs on sale:', allTokenIds.map((id: bigint) => id.toString()));
-      
-      // Filter to only user's NFTs by checking seller
-      const userTokenIds = [];
-      for (const tokenId of allTokenIds) {
-        const seller = await auctionContract.s_seller(tokenId);
-        if (seller.toLowerCase() === account.toLowerCase()) {
-          userTokenIds.push(tokenId);
-        }
-      }
-      const tokenIds = userTokenIds;
-      console.log('User Token IDs on sale:', tokenIds.map((id: bigint) => id.toString()));
+      // Get user's NFTs on sale using their wallet address
+      const tokenIds = await auctionContract.getListOfNftsBySeller(account);
+      console.log('Token IDs on sale:', tokenIds.map((id: bigint) => id.toString()));
 
       if (tokenIds.length === 0) {
         console.log('No NFTs on sale for user');
