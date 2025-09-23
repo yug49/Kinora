@@ -521,41 +521,12 @@ export const Marketplace = () => {
       console.log('Description:', sellForm.description);
       console.log('Auction Address:', AUCTION_CONTRACT_ADDRESS);
 
-      // Check if NFT is already on sale
-      const isOnSale = await auctionContract.isNftOnSale(BigInt(sellForm.tokenId));
-      console.log('Is NFT already on sale?', isOnSale);
-      
-      if (isOnSale) {
-        toast.error('This NFT is already on sale');
-        return;
-      }
-
-      // Check current owner of the NFT
-      const owner = await cinftContract.ownerOf(BigInt(sellForm.tokenId));
-      const currentAccount = await signer.getAddress();
-      console.log('NFT Owner:', owner);
-      console.log('Current Account:', currentAccount);
-      
-      if (owner.toLowerCase() !== currentAccount.toLowerCase()) {
-        toast.error('You do not own this NFT');
-        return;
-      }
-
-      // Check current approval
-      const currentApproval = await cinftContract.getApproved(BigInt(sellForm.tokenId));
-      console.log('Current approval:', currentApproval);
-      console.log('Auction contract:', AUCTION_CONTRACT_ADDRESS);
-
-      // First approve the auction contract to transfer the NFT (only if not already approved)
-      if (currentApproval.toLowerCase() !== AUCTION_CONTRACT_ADDRESS.toLowerCase()) {
-        console.log('Approving auction contract...');
-        const approveTx = await cinftContract.approve(AUCTION_CONTRACT_ADDRESS, BigInt(sellForm.tokenId));
-        toast.success('Approval sent! Waiting for confirmation...');
-        await approveTx.wait();
-        console.log('Approval confirmed');
-      } else {
-        console.log('Already approved');
-      }
+      // First approve the auction contract to transfer the NFT
+      console.log('Approving auction contract...');
+      const approveTx = await cinftContract.approve(AUCTION_CONTRACT_ADDRESS, BigInt(sellForm.tokenId));
+      toast.success('Approval sent! Waiting for confirmation...');
+      await approveTx.wait();
+      console.log('Approval confirmed');
 
       // Then put the NFT on sale
       const minBidInWei = ethers.parseEther(sellForm.minBid);
