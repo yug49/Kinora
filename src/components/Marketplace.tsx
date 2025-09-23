@@ -268,38 +268,85 @@ export const Marketplace = () => {
 
   // Fetch user's available NFTs (not on sale)
   const fetchAvailableNFTs = async () => {
-    if (!isConnected || !isOnTenNetwork || !account) return;
+    console.log('=== Fetching Available NFTs Debug ===');
+    console.log('Wallet state:', { isConnected, isOnTenNetwork, account });
+    
+    if (!isConnected || !isOnTenNetwork || !account) {
+      console.log('Conditions not met, skipping fetch');
+      return;
+    }
+
+    console.log('Starting available NFTs fetch for account:', account);
 
     try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, provider);
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
 
+      console.log('Contracts initialized');
+      console.log('CINFT Contract:', CINFT_CONTRACT_ADDRESS);
+      console.log('Auction Contract:', AUCTION_CONTRACT_ADDRESS);
+
       // Get user's balance and token IDs
+      console.log('Calling balanceOf with address:', account);
       const balance = await cinftContract.balanceOf(account);
+      console.log('Balance returned:', balance.toString());
+      
+      if (balance === 0n) {
+        console.log('No tokens found for user');
+        setAvailableNFTs([]);
+        return;
+      }
+
+      console.log('Found', balance.toString(), 'tokens, fetching token IDs...');
       const tokenIds = [];
       
       for (let i = 0; i < balance; i++) {
         const tokenId = await cinftContract.tokenOfOwnerByIndex(account, i);
         tokenIds.push(tokenId);
+        console.log('Token ID at index', i, ':', tokenId.toString());
       }
 
+      console.log('All token IDs:', tokenIds.map(t => t.toString()));
+
       // Filter out NFTs that are on sale
+      console.log('Checking which NFTs are on sale...');
       const availableTokens = [];
       for (const tokenId of tokenIds) {
         const isOnSale = await auctionContract.isNftOnSale(tokenId);
+        console.log('Token', tokenId.toString(), 'is on sale:', isOnSale);
         if (!isOnSale) {
           availableTokens.push(tokenId);
         }
       }
 
+      console.log('Available tokens (not on sale):', availableTokens.map(t => t.toString()));
+
+      if (availableTokens.length === 0) {
+        console.log('All NFTs are already on sale');
+        setAvailableNFTs([]);
+        return;
+      }
+
+      console.log('Fetching details for available tokens...');
       const nftsData = await Promise.all(
         availableTokens.map(async (tokenId: bigint) => {
           try {
+            console.log('Fetching details for token', tokenId.toString());
             const [imageUrl, ratings] = await Promise.all([
               cinftContract.getTokenIdToImageUrl(tokenId),
               cinftContract.getRatingOfAToken(tokenId)
             ]);
+
+            console.log('Token', tokenId.toString(), 'details:', {
+              imageUrl,
+              likes: Number(ratings[0]),
+              dislikes: Number(ratings[1])
+            });
 
             return {
               tokenId: tokenId.toString(),
@@ -317,9 +364,19 @@ export const Marketplace = () => {
         })
       );
 
-      setAvailableNFTs(nftsData.filter(nft => nft !== null) as UserNFT[]);
+      const filteredNFTs = nftsData.filter(nft => nft !== null) as UserNFT[];
+      console.log('Final available NFTs:', filteredNFTs);
+      setAvailableNFTs(filteredNFTs);
     } catch (err) {
       console.error('Error fetching available NFTs:', err);
+      console.error('Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        account,
+        isConnected,
+        isOnTenNetwork
+      });
+      toast.error('Failed to fetch available NFTs');
     }
   };
 
@@ -683,7 +740,13 @@ export const Marketplace = () => {
           {availableNFTs.length === 0 ? (
             <div className="text-center py-8">
               <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No available NFTs to put on sale</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No available NFTs to put on sale</h3>
+              <p className="text-muted-foreground text-sm">
+                Either you don't own any CINFTs, or all your CINFTs are already on sale.
+              </p>
+              <p className="text-muted-foreground text-xs mt-2">
+                Check the browser console for detailed debugging information.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
