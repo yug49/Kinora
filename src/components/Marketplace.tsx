@@ -330,7 +330,8 @@ export const Marketplace = () => {
               timeLeft,
               endTime: Number(endTime),
               likes: Number(ratings[0]),
-              dislikes: Number(ratings[1])
+              dislikes: Number(ratings[1]),
+              isOnSale: true
             };
           } catch (error) {
             console.error('Error fetching details for token', tokenId.toString(), ':', error);
