@@ -1,40 +1,47 @@
-import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Gavel, Plus, Timer, Coins, User, Calendar, Loader2, RefreshCw } from 'lucide-react';
-import { useWallet } from '@/hooks/useWallet';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, Gavel, Plus, Timer, Coins, User, Calendar, Loader2, RefreshCw } from "lucide-react";
+import { useWallet } from "@/hooks/useWallet";
+import { toast } from "sonner";
 
 // Contract addresses
-const CINFT_CONTRACT_ADDRESS = '0x6aCA5cdC9Ea78a02D90D9634FAe87945931d7ffb';
-const AUCTION_CONTRACT_ADDRESS = '0x516D3DA8b4714557392eeB51F5E4aBc423E8Db1B';
+const CINFT_CONTRACT_ADDRESS = "0x6aCA5cdC9Ea78a02D90D9634FAe87945931d7ffb";
+const AUCTION_CONTRACT_ADDRESS = "0x516D3DA8b4714557392eeB51F5E4aBc423E8Db1B";
 
 // Contract ABIs
 const CINFT_ABI = [
-  'function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256)',
-  'function getTokenIdToImageUrl(uint256 _tokenId) public view returns (string memory)',
-  'function name() public view returns (string memory)',
-  'function balanceOf(address owner) public view returns (uint256)',
-  'function approve(address to, uint256 tokenId) public'
+  "function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256)",
+  "function getTokenIdToImageUrl(uint256 _tokenId) public view returns (string memory)",
+  "function name() public view returns (string memory)",
+  "function balanceOf(address owner) public view returns (uint256)",
+  "function approve(address to, uint256 tokenId) public",
 ];
 
 const AUCTION_ABI = [
-  'function getNftsOnSale() public view returns(uint256[] memory)',
-  'function isNftOnSale(uint256 _tokenId) public view returns(bool)',
-  'function getNftsBidEndTime(uint256 _tokenId) public view returns(uint256)',
-  'function getMinBid(uint256 _tokenId) public view returns(uint256)',
-  'function getDescription(uint256 _tokenId) public view returns(string memory)',
-  'function bid(uint256 _tokenId, uint256 _bid) public payable',
-  'function putNftOnSale(uint256 _tokenId, uint256 _minBid, uint256 _bidTimeInSeconds, string memory _description) public',
-  'function completeAuction(uint256 _tokenId) public',
-  'function getListOfNftsBySeller(address _seller) public view returns(uint256[] memory)'
+  "function getNftsOnSale() public view returns(uint256[] memory)",
+  "function isNftOnSale(uint256 _tokenId) public view returns(bool)",
+  "function getNftsBidEndTime(uint256 _tokenId) public view returns(uint256)",
+  "function getMinBid(uint256 _tokenId) public view returns(uint256)",
+  "function getDescription(uint256 _tokenId) public view returns(string memory)",
+  "function bid(uint256 _tokenId, uint256 _bid) public payable",
+  "function putNftOnSale(uint256 _tokenId, uint256 _minBid, uint256 _bidTimeInSeconds, string memory _description) public",
+  "function completeAuction(uint256 _tokenId) public",
+  "function getListOfNftsBySeller(address _seller) public view returns(uint256[] memory)",
 ];
 
 interface MarketNFT {
@@ -60,7 +67,7 @@ interface UserNFT {
 
 interface NFTCardProps {
   nft: MarketNFT | UserNFT;
-  type: 'market' | 'owned' | 'user-on-sale';
+  type: "market" | "owned" | "user-on-sale";
   onBid?: () => void;
   onSell?: () => void;
   onComplete?: () => void;
@@ -68,34 +75,28 @@ interface NFTCardProps {
 
 const NFTCard = ({ nft, type, onBid, onSell, onComplete }: NFTCardProps) => {
   // More robust expiration check
-  const isExpired = type === 'user-on-sale' && 'endTime' in nft && nft.timeLeft === 'Expired';
+  const isExpired = type === "user-on-sale" && "endTime" in nft && nft.timeLeft === "Expired";
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-square bg-muted relative overflow-hidden">
-        <img 
-          src={nft.image} 
-          alt={nft.name}
-          className="w-full h-full object-cover"
-        />
-        {type === 'market' && 'timeLeft' in nft && (
+        <img src={nft.image} alt={nft.name} className="w-full h-full object-cover" />
+        {type === "market" && "timeLeft" in nft && (
           <Badge className="absolute top-2 left-2 bg-primary/90">
             <Timer className="h-3 w-3 mr-1" />
             {nft.timeLeft}
           </Badge>
         )}
       </div>
-      
+
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">{nft.name}</CardTitle>
-        <CardDescription className="text-sm line-clamp-2">
-          {nft.description}
-        </CardDescription>
+        <CardDescription className="text-sm line-clamp-2">{nft.description}</CardDescription>
       </CardHeader>
-      
+
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {type === 'market' && 'minBid' in nft ? (
+          {type === "market" && "minBid" in nft ? (
             <>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Min Bid:</span>
@@ -106,7 +107,7 @@ const NFTCard = ({ nft, type, onBid, onSell, onComplete }: NFTCardProps) => {
                 Place Bid
               </Button>
             </>
-          ) : type === 'user-on-sale' && 'isOnSale' in nft && nft.isOnSale ? (
+          ) : type === "user-on-sale" && "isOnSale" in nft && nft.isOnSale ? (
             <>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Min Bid:</span>
@@ -125,7 +126,7 @@ const NFTCard = ({ nft, type, onBid, onSell, onComplete }: NFTCardProps) => {
                 </Button>
               )}
             </>
-          ) : type === 'owned' ? (
+          ) : type === "owned" ? (
             <Button onClick={onSell} className="w-full">
               <Plus className="h-4 w-4 mr-2" />
               Put on Sale
@@ -139,7 +140,7 @@ const NFTCard = ({ nft, type, onBid, onSell, onComplete }: NFTCardProps) => {
 
 export const Marketplace = () => {
   const { account, isConnected, isOnTenNetwork } = useWallet();
-  
+
   // State
   const [marketNFTs, setMarketNFTs] = useState<MarketNFT[]>([]);
   const [userNFTsOnSale, setUserNFTsOnSale] = useState<UserNFT[]>([]);
@@ -147,15 +148,15 @@ export const Marketplace = () => {
   const [loading, setLoading] = useState(false);
   const [loadingUserSales, setLoadingUserSales] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [selectedNFT, setSelectedNFT] = useState<MarketNFT | null>(null);
-  const [bidAmount, setBidAmount] = useState('');
+  const [bidAmount, setBidAmount] = useState("");
   const [sellForm, setSellForm] = useState({
-    tokenId: '',
-    minBid: '',
-    bidTimeInDays: '7',
-    bidTimeInMinutes: '0',
-    description: ''
+    tokenId: "",
+    minBid: "",
+    bidTimeInDays: "7",
+    bidTimeInMinutes: "0",
+    description: "",
   });
   const [showBidDialog, setShowBidDialog] = useState(false);
   const [showSellDialog, setShowSellDialog] = useState(false);
@@ -168,13 +169,13 @@ export const Marketplace = () => {
   const formatTimeLeft = (endTime: number): string => {
     const now = Math.floor(Date.now() / 1000);
     const timeLeft = endTime - now;
-    
+
     if (timeLeft <= 0) return "Expired";
-    
+
     const days = Math.floor(timeLeft / 86400);
     const hours = Math.floor((timeLeft % 86400) / 3600);
     const minutes = Math.floor((timeLeft % 3600) / 60);
-    
+
     if (days > 0) return `${days}d ${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
@@ -186,7 +187,7 @@ export const Marketplace = () => {
 
     setLoading(true);
     setError(null);
-    
+
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, provider);
@@ -194,7 +195,7 @@ export const Marketplace = () => {
 
       // Get all NFTs on sale
       const tokenIds = await auctionContract.getNftsOnSale();
-      
+
       const nftsData = await Promise.all(
         tokenIds.map(async (tokenId: bigint) => {
           try {
@@ -202,7 +203,7 @@ export const Marketplace = () => {
               cinftContract.getTokenIdToImageUrl(tokenId),
               auctionContract.getDescription(tokenId),
               auctionContract.getMinBid(tokenId),
-              auctionContract.getNftsBidEndTime(tokenId)
+              auctionContract.getNftsBidEndTime(tokenId),
             ]);
 
             return {
@@ -212,19 +213,19 @@ export const Marketplace = () => {
               description,
               minBid: ethers.formatEther(minBid),
               timeLeft: formatTimeLeft(Number(endTime)),
-              endTime: Number(endTime)
+              endTime: Number(endTime),
             };
           } catch (err) {
             console.error(`Error fetching data for token ${tokenId}:`, err);
             return null;
           }
-        })
+        }),
       );
 
-      setMarketNFTs(nftsData.filter(nft => nft !== null) as MarketNFT[]);
+      setMarketNFTs(nftsData.filter((nft) => nft !== null) as MarketNFT[]);
     } catch (err) {
-      console.error('Error fetching market NFTs:', err);
-      setError('Failed to fetch market NFTs');
+      console.error("Error fetching market NFTs:", err);
+      setError("Failed to fetch market NFTs");
     } finally {
       setLoading(false);
     }
@@ -232,46 +233,49 @@ export const Marketplace = () => {
 
   // Fetch user's NFTs on sale
   const fetchUserNFTsOnSale = async () => {
-    console.log('=== Fetching User NFTs on Sale Debug ===');
-    console.log('Wallet state:', { isConnected, isOnTenNetwork, account });
-    
+    console.log("=== Fetching User NFTs on Sale Debug ===");
+    console.log("Wallet state:", { isConnected, isOnTenNetwork, account });
+
     if (!isConnected || !isOnTenNetwork || !account) {
-      console.log('Conditions not met, skipping fetch');
+      console.log("Conditions not met, skipping fetch");
       return;
     }
 
-    console.log('Starting user NFTs on sale fetch for account:', account);
+    console.log("Starting user NFTs on sale fetch for account:", account);
     setLoadingUserSales(true);
-    
+
     try {
       if (!window.ethereum) {
-        throw new Error('MetaMask not found');
+        throw new Error("MetaMask not found");
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, provider);
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
 
-      console.log('Contracts initialized');
-      console.log('Calling getListOfNftsBySeller with address:', account);
+      console.log("Contracts initialized");
+      console.log("Calling getListOfNftsBySeller with address:", account);
 
       // Get user's NFTs on sale using their wallet address
       const tokenIds = await auctionContract.getListOfNftsBySeller(account);
-      console.log('Token IDs on sale:', tokenIds.map((id: bigint) => id.toString()));
+      console.log(
+        "Token IDs on sale:",
+        tokenIds.map((id: bigint) => id.toString()),
+      );
 
       if (tokenIds.length === 0) {
-        console.log('No NFTs on sale for user');
+        console.log("No NFTs on sale for user");
         setUserNFTsOnSale([]);
         return;
       }
 
       // Fetch details for each NFT on sale
-      console.log('Fetching details for NFTs on sale...');
+      console.log("Fetching details for NFTs on sale...");
       const nftsData = await Promise.all(
         tokenIds.map(async (tokenId: bigint) => {
           try {
-            console.log('Fetching details for token on sale:', tokenId.toString());
-            
+            console.log("Fetching details for token on sale:", tokenId.toString());
+
             // Get NFT details from CINFT contract
             const imageUrl = await cinftContract.getTokenIdToImageUrl(tokenId);
 
@@ -279,54 +283,54 @@ export const Marketplace = () => {
             const [minBid, endTime, description] = await Promise.all([
               auctionContract.getMinBid(tokenId),
               auctionContract.getNftsBidEndTime(tokenId),
-              auctionContract.getDescription(tokenId)
+              auctionContract.getDescription(tokenId),
             ]);
 
-            console.log('NFT details for token', tokenId.toString(), ':', {
+            console.log("NFT details for token", tokenId.toString(), ":", {
               imageUrl,
               minBid: ethers.formatEther(minBid),
               endTime: Number(endTime),
-              description
+              description,
             });
 
             // Calculate time left
             const now = Math.floor(Date.now() / 1000);
             const timeLeftSeconds = Number(endTime) - now;
-            const timeLeft = timeLeftSeconds > 0 
-              ? `${Math.floor(timeLeftSeconds / 86400)}d ${Math.floor((timeLeftSeconds % 86400) / 3600)}h ${Math.floor((timeLeftSeconds % 3600) / 60)}m`
-              : 'Expired';
+            const timeLeft =
+              timeLeftSeconds > 0
+                ? `${Math.floor(timeLeftSeconds / 86400)}d ${Math.floor((timeLeftSeconds % 86400) / 3600)}h ${Math.floor((timeLeftSeconds % 3600) / 60)}m`
+                : "Expired";
 
             return {
               tokenId: tokenId.toString(),
               name: `CINFT #${tokenId.toString()}`,
               image: imageUrl,
-              description: description || 'No description available',
+              description: description || "No description available",
               minBid: ethers.formatEther(minBid),
               timeLeft,
               endTime: Number(endTime),
-              isOnSale: true
+              isOnSale: true,
             };
           } catch (error) {
-            console.error('Error fetching details for token', tokenId.toString(), ':', error);
+            console.error("Error fetching details for token", tokenId.toString(), ":", error);
             return null;
           }
-        })
+        }),
       );
 
-      const filteredNFTs = nftsData.filter(nft => nft !== null) as UserNFT[];
-      console.log('Final user NFTs on sale:', filteredNFTs);
+      const filteredNFTs = nftsData.filter((nft) => nft !== null) as UserNFT[];
+      console.log("Final user NFTs on sale:", filteredNFTs);
       setUserNFTsOnSale(filteredNFTs);
-
     } catch (err) {
-      console.error('Error fetching user NFTs on sale:', err);
-      console.error('Error details:', {
-        message: err instanceof Error ? err.message : 'Unknown error',
+      console.error("Error fetching user NFTs on sale:", err);
+      console.error("Error details:", {
+        message: err instanceof Error ? err.message : "Unknown error",
         stack: err instanceof Error ? err.stack : undefined,
         account,
         isConnected,
-        isOnTenNetwork
+        isOnTenNetwork,
       });
-      toast.error('Failed to fetch your NFTs on sale');
+      toast.error("Failed to fetch your NFTs on sale");
     } finally {
       setLoadingUserSales(false);
     }
@@ -334,59 +338,62 @@ export const Marketplace = () => {
 
   // Fetch user's available NFTs (show all NFTs, let contract handle sale status)
   const fetchAvailableNFTs = async () => {
-    console.log('=== Fetching User NFTs Debug ===');
-    console.log('Wallet state:', { isConnected, isOnTenNetwork, account });
-    
+    console.log("=== Fetching User NFTs Debug ===");
+    console.log("Wallet state:", { isConnected, isOnTenNetwork, account });
+
     if (!isConnected || !isOnTenNetwork || !account) {
-      console.log('Conditions not met, skipping fetch');
+      console.log("Conditions not met, skipping fetch");
       return;
     }
 
-    console.log('Starting NFTs fetch for account:', account);
+    console.log("Starting NFTs fetch for account:", account);
 
     try {
       if (!window.ethereum) {
-        throw new Error('MetaMask not found');
+        throw new Error("MetaMask not found");
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, provider);
 
-      console.log('Contract initialized');
-      console.log('CINFT Contract:', CINFT_CONTRACT_ADDRESS);
+      console.log("Contract initialized");
+      console.log("CINFT Contract:", CINFT_CONTRACT_ADDRESS);
 
       // Get user's balance and token IDs
-      console.log('Calling balanceOf with address:', account);
+      console.log("Calling balanceOf with address:", account);
       const balance = await cinftContract.balanceOf(account);
-      console.log('Balance returned:', balance.toString());
-      
+      console.log("Balance returned:", balance.toString());
+
       if (balance === 0n) {
-        console.log('No tokens found for user');
+        console.log("No tokens found for user");
         setAvailableNFTs([]);
         return;
       }
 
-      console.log('Found', balance.toString(), 'tokens, fetching token IDs...');
+      console.log("Found", balance.toString(), "tokens, fetching token IDs...");
       const tokenIds = [];
-      
+
       for (let i = 0; i < balance; i++) {
         const tokenId = await cinftContract.tokenOfOwnerByIndex(account, i);
         tokenIds.push(tokenId);
-        console.log('Token ID at index', i, ':', tokenId.toString());
+        console.log("Token ID at index", i, ":", tokenId.toString());
       }
 
-      console.log('All token IDs:', tokenIds.map(t => t.toString()));
+      console.log(
+        "All token IDs:",
+        tokenIds.map((t) => t.toString()),
+      );
 
       // Fetch details for all tokens (don't filter by sale status)
-      console.log('Fetching details for all tokens...');
+      console.log("Fetching details for all tokens...");
       const nftsData = await Promise.all(
         tokenIds.map(async (tokenId: bigint) => {
           try {
-            console.log('Fetching details for token', tokenId.toString());
+            console.log("Fetching details for token", tokenId.toString());
             const imageUrl = await cinftContract.getTokenIdToImageUrl(tokenId);
 
-            console.log('Token', tokenId.toString(), 'details:', {
-              imageUrl
+            console.log("Token", tokenId.toString(), "details:", {
+              imageUrl,
             });
 
             return {
@@ -394,45 +401,45 @@ export const Marketplace = () => {
               name: `CINFT #${tokenId.toString()}`,
               image: imageUrl,
               description: `AI-generated NFT with unique personality and capabilities.`,
-              isOnSale: false
+              isOnSale: false,
             };
           } catch (err) {
             console.error(`Error fetching data for token ${tokenId}:`, err);
             return null;
           }
-        })
+        }),
       );
 
-      const filteredNFTs = nftsData.filter(nft => nft !== null) as UserNFT[];
-      console.log('Final user NFTs:', filteredNFTs);
+      const filteredNFTs = nftsData.filter((nft) => nft !== null) as UserNFT[];
+      console.log("Final user NFTs:", filteredNFTs);
       setAvailableNFTs(filteredNFTs);
     } catch (err) {
-      console.error('Error fetching user NFTs:', err);
-      console.error('Error details:', {
-        message: err instanceof Error ? err.message : 'Unknown error',
+      console.error("Error fetching user NFTs:", err);
+      console.error("Error details:", {
+        message: err instanceof Error ? err.message : "Unknown error",
         stack: err instanceof Error ? err.stack : undefined,
         account,
         isConnected,
-        isOnTenNetwork
+        isOnTenNetwork,
       });
-      toast.error('Failed to fetch your NFTs');
+      toast.error("Failed to fetch your NFTs");
     }
   };
 
   // Event handlers
   const handleBid = (nft: MarketNFT) => {
     setSelectedNFT(nft);
-    setBidAmount('');
+    setBidAmount("");
     setShowBidDialog(true);
   };
 
   const handleSell = (nft: UserNFT) => {
     setSellForm({
       tokenId: nft.tokenId,
-      minBid: '',
-      bidTimeInDays: '7',
-      bidTimeInMinutes: '0',
-      description: nft.description
+      minBid: "",
+      bidTimeInDays: "7",
+      bidTimeInMinutes: "0",
+      description: nft.description,
     });
     setShowSellDialog(true);
   };
@@ -452,22 +459,21 @@ export const Marketplace = () => {
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, signer);
 
       const bidInWei = ethers.parseEther(bidAmount);
-      
+
       const tx = await auctionContract.bid(BigInt(selectedNFT.tokenId), bidInWei, {
-        value: bidInWei
+        value: bidInWei,
       });
 
-      toast.success('Bid placed! Waiting for confirmation...');
+      toast.success("Bid placed! Waiting for confirmation...");
       await tx.wait();
-      toast.success('Bid confirmed successfully!');
-      
+      toast.success("Bid confirmed successfully!");
+
       setShowBidDialog(false);
-      setBidAmount('');
+      setBidAmount("");
       fetchMarketNFTs();
-      
     } catch (err) {
-      console.error('Bid failed:', err);
-      toast.error(err instanceof Error ? err.message : 'Bid failed');
+      console.error("Bid failed:", err);
+      toast.error(err instanceof Error ? err.message : "Bid failed");
     } finally {
       setBidding(false);
     }
@@ -483,28 +489,29 @@ export const Marketplace = () => {
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, signer);
       const cinftContract = new ethers.Contract(CINFT_CONTRACT_ADDRESS, CINFT_ABI, signer);
 
-      console.log('=== Starting NFT Sale Process ===');
-      console.log('Token ID:', sellForm.tokenId);
-      console.log('Min Bid:', sellForm.minBid);
-      console.log('Description:', sellForm.description);
-      console.log('Auction Address:', AUCTION_CONTRACT_ADDRESS);
+      console.log("=== Starting NFT Sale Process ===");
+      console.log("Token ID:", sellForm.tokenId);
+      console.log("Min Bid:", sellForm.minBid);
+      console.log("Description:", sellForm.description);
+      console.log("Auction Address:", AUCTION_CONTRACT_ADDRESS);
 
       // First approve the auction contract to transfer the NFT
-      console.log('Approving auction contract...');
+      console.log("Approving auction contract...");
       const approveTx = await cinftContract.approve(AUCTION_CONTRACT_ADDRESS, BigInt(sellForm.tokenId));
-      toast.success('Approval sent! Waiting for confirmation...');
+      toast.success("Approval sent! Waiting for confirmation...");
       await approveTx.wait();
-      console.log('Approval confirmed');
+      console.log("Approval confirmed");
 
       // Then put the NFT on sale
       const minBidInWei = ethers.parseEther(sellForm.minBid);
-      const bidTimeInSeconds = (parseInt(sellForm.bidTimeInDays || '0') * 24 * 60 * 60) + (parseInt(sellForm.bidTimeInMinutes || '0') * 60);
-      
-      console.log('Sale parameters:');
-      console.log('- Token ID:', BigInt(sellForm.tokenId));
-      console.log('- Min Bid (Wei):', minBidInWei.toString());
-      console.log('- Bid Time (seconds):', bidTimeInSeconds);
-      console.log('- Description:', sellForm.description);
+      const bidTimeInSeconds =
+        parseInt(sellForm.bidTimeInDays || "0") * 24 * 60 * 60 + parseInt(sellForm.bidTimeInMinutes || "0") * 60;
+
+      console.log("Sale parameters:");
+      console.log("- Token ID:", BigInt(sellForm.tokenId));
+      console.log("- Min Bid (Wei):", minBidInWei.toString());
+      console.log("- Bid Time (seconds):", bidTimeInSeconds);
+      console.log("- Description:", sellForm.description);
 
       // Estimate gas first to catch any revert errors early
       try {
@@ -512,44 +519,43 @@ export const Marketplace = () => {
           BigInt(sellForm.tokenId),
           minBidInWei,
           bidTimeInSeconds,
-          sellForm.description
+          sellForm.description,
         );
-        console.log('Gas estimate:', gasEstimate.toString());
+        console.log("Gas estimate:", gasEstimate.toString());
       } catch (gasError) {
-        console.error('Gas estimation failed:', gasError);
-        throw new Error('Transaction would fail. Please check if NFT is already on sale or contact support.');
+        console.error("Gas estimation failed:", gasError);
+        throw new Error("Transaction would fail. Please check if NFT is already on sale or contact support.");
       }
 
       const tx = await auctionContract.putNftOnSale(
         BigInt(sellForm.tokenId),
         minBidInWei,
         bidTimeInSeconds,
-        sellForm.description
+        sellForm.description,
       );
 
-      toast.success('NFT listing created! Waiting for confirmation...');
+      toast.success("NFT listing created! Waiting for confirmation...");
       await tx.wait();
-      toast.success('NFT listed successfully!');
-      
+      toast.success("NFT listed successfully!");
+
       setShowSellDialog(false);
-      setSellForm({ tokenId: '', minBid: '', bidTimeInDays: '7', bidTimeInMinutes: '0', description: '' });
+      setSellForm({ tokenId: "", minBid: "", bidTimeInDays: "7", bidTimeInMinutes: "0", description: "" });
       fetchMarketNFTs();
       fetchUserNFTsOnSale();
-      
     } catch (err) {
-      console.error('Sale failed:', err);
+      console.error("Sale failed:", err);
       if (err instanceof Error) {
-        if (err.message.includes('already on sale')) {
-          toast.error('This NFT is already on sale');
-        } else if (err.message.includes('not approved')) {
-          toast.error('Please approve the contract to transfer your NFT');
-        } else if (err.message.includes('not the owner')) {
-          toast.error('You do not own this NFT');
+        if (err.message.includes("already on sale")) {
+          toast.error("This NFT is already on sale");
+        } else if (err.message.includes("not approved")) {
+          toast.error("Please approve the contract to transfer your NFT");
+        } else if (err.message.includes("not the owner")) {
+          toast.error("You do not own this NFT");
         } else {
           toast.error(err.message);
         }
       } else {
-        toast.error('Failed to list NFT');
+        toast.error("Failed to list NFT");
       }
     } finally {
       setSelling(false);
@@ -566,16 +572,15 @@ export const Marketplace = () => {
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_ABI, signer);
 
       const tx = await auctionContract.completeAuction(BigInt(tokenId));
-      toast.success('Auction completion initiated! Waiting for confirmation...');
+      toast.success("Auction completion initiated! Waiting for confirmation...");
       await tx.wait();
-      toast.success('Auction completed successfully!');
-      
+      toast.success("Auction completed successfully!");
+
       fetchMarketNFTs();
       fetchUserNFTsOnSale();
-      
     } catch (err) {
-      console.error('Complete auction failed:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to complete auction');
+      console.error("Complete auction failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to complete auction");
     } finally {
       setCompleting(false);
     }
@@ -593,9 +598,10 @@ export const Marketplace = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold text-foreground">NFT Marketplace</h1>
+        <h1 className="text-3xl font-bold text-foreground">Vickrey Auction Marketplace</h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Discover and bid on unique CINFTs using Vickrey's second-price auction method for fair and transparent trading.
+          Discover and bid on unique Kinora NFTs using Vickrey's second-price auction method for fair and transparent
+          trading.
         </p>
       </div>
 
@@ -603,7 +609,7 @@ export const Marketplace = () => {
       <div className="flex justify-center">
         <Button onClick={handlePutOnSale} size="lg">
           <Plus className="h-5 w-5 mr-2" />
-          Put CINFT on Sale
+          Put Kinora NFT on Sale
         </Button>
       </div>
 
@@ -622,18 +628,13 @@ export const Marketplace = () => {
                 <Badge variant="secondary" className="text-sm">
                   {marketNFTs.length} NFTs available
                 </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchMarketNFTs}
-                  disabled={loading}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <Button variant="outline" size="sm" onClick={fetchMarketNFTs} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                   Refresh
                 </Button>
               </div>
             </div>
-            
+
             {!isConnected ? (
               <div className="text-center py-12">
                 <Gavel className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -670,12 +671,7 @@ export const Marketplace = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {marketNFTs.map((nft) => (
-                  <NFTCard
-                    key={nft.tokenId}
-                    nft={nft}
-                    type="market"
-                    onBid={() => handleBid(nft)}
-                  />
+                  <NFTCard key={nft.tokenId} nft={nft} type="market" onBid={() => handleBid(nft)} />
                 ))}
               </div>
             )}
@@ -690,18 +686,13 @@ export const Marketplace = () => {
                 <Badge variant="secondary" className="text-sm">
                   {userNFTsOnSale.length} on sale
                 </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchUserNFTsOnSale}
-                  disabled={loadingUserSales}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loadingUserSales ? 'animate-spin' : ''}`} />
+                <Button variant="outline" size="sm" onClick={fetchUserNFTsOnSale} disabled={loadingUserSales}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loadingUserSales ? "animate-spin" : ""}`} />
                   Refresh
                 </Button>
               </div>
             </div>
-            
+
             {!isConnected ? (
               <div className="text-center py-12">
                 <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -724,9 +715,7 @@ export const Marketplace = () => {
               <div className="text-center py-12">
                 <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-foreground mb-2">No NFTs on Sale</h3>
-                <p className="text-muted-foreground">
-                  You don't have any NFTs currently listed for sale.
-                </p>
+                <p className="text-muted-foreground">You don't have any NFTs currently listed for sale.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -749,11 +738,9 @@ export const Marketplace = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Place Bid</DialogTitle>
-            <DialogDescription>
-              Enter your bid amount for {selectedNFT?.name}
-            </DialogDescription>
+            <DialogDescription>Enter your bid amount for {selectedNFT?.name}</DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg space-y-2">
               <div className="flex justify-between">
@@ -765,7 +752,7 @@ export const Marketplace = () => {
                 <Badge variant="outline">{selectedNFT?.timeLeft}</Badge>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="bidAmount">Your Bid Amount (ETH)</Label>
               <Input
@@ -777,27 +764,18 @@ export const Marketplace = () => {
                 onChange={(e) => setBidAmount(e.target.value)}
               />
             </div>
-            
+
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => setShowBidDialog(false)}
-                disabled={bidding}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setShowBidDialog(false)} disabled={bidding}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
                 onClick={submitBid}
-                disabled={bidding || !bidAmount || parseFloat(bidAmount) < parseFloat(selectedNFT?.minBid || '0')}
+                disabled={bidding || !bidAmount || parseFloat(bidAmount) < parseFloat(selectedNFT?.minBid || "0")}
               >
-                {bidding ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Coins className="h-4 w-4 mr-2" />
-                )}
-                {bidding ? 'Placing Bid...' : 'Place Bid'}
+                {bidding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Coins className="h-4 w-4 mr-2" />}
+                {bidding ? "Placing Bid..." : "Place Bid"}
               </Button>
             </div>
           </div>
@@ -809,11 +787,9 @@ export const Marketplace = () => {
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Select NFT to Put on Sale</DialogTitle>
-            <DialogDescription>
-              Choose which CINFT you want to put on the marketplace
-            </DialogDescription>
+            <DialogDescription>Choose which CINFT you want to put on the marketplace</DialogDescription>
           </DialogHeader>
-          
+
           {availableNFTs.length === 0 ? (
             <div className="text-center py-8">
               <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -825,7 +801,7 @@ export const Marketplace = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
               {availableNFTs.map((nft) => (
-                <Card 
+                <Card
                   key={nft.tokenId}
                   className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => {
@@ -834,17 +810,11 @@ export const Marketplace = () => {
                   }}
                 >
                   <div className="aspect-square bg-muted relative overflow-hidden">
-                    <img 
-                      src={nft.image} 
-                      alt={nft.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={nft.image} alt={nft.name} className="w-full h-full object-cover" />
                   </div>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">{nft.name}</CardTitle>
-                    <CardDescription className="text-xs line-clamp-2">
-                      {nft.description}
-                    </CardDescription>
+                    <CardDescription className="text-xs line-clamp-2">{nft.description}</CardDescription>
                   </CardHeader>
                 </Card>
               ))}
@@ -858,23 +828,21 @@ export const Marketplace = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Put NFT on Sale</DialogTitle>
-            <DialogDescription>
-              Set up your auction parameters
-            </DialogDescription>
+            <DialogDescription>Set up your auction parameters</DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="tokenId">Token ID</Label>
               <Input
                 id="tokenId"
                 value={sellForm.tokenId}
-                onChange={(e) => setSellForm({...sellForm, tokenId: e.target.value})}
+                onChange={(e) => setSellForm({ ...sellForm, tokenId: e.target.value })}
                 placeholder="Token ID"
                 disabled
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="minBid">Minimum Bid (ETH)</Label>
               <Input
@@ -882,7 +850,7 @@ export const Marketplace = () => {
                 type="number"
                 step="0.01"
                 value={sellForm.minBid}
-                onChange={(e) => setSellForm({...sellForm, minBid: e.target.value})}
+                onChange={(e) => setSellForm({ ...sellForm, minBid: e.target.value })}
                 placeholder="0.1"
               />
             </div>
@@ -891,63 +859,63 @@ export const Marketplace = () => {
               <Label>Auction Duration</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="bidTimeDays" className="text-sm text-muted-foreground">Days</Label>
+                  <Label htmlFor="bidTimeDays" className="text-sm text-muted-foreground">
+                    Days
+                  </Label>
                   <Input
                     id="bidTimeDays"
                     type="number"
                     min="0"
                     max="30"
                     value={sellForm.bidTimeInDays}
-                    onChange={(e) => setSellForm({...sellForm, bidTimeInDays: e.target.value})}
+                    onChange={(e) => setSellForm({ ...sellForm, bidTimeInDays: e.target.value })}
                     placeholder="7"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="bidTimeMinutes" className="text-sm text-muted-foreground">Minutes</Label>
+                  <Label htmlFor="bidTimeMinutes" className="text-sm text-muted-foreground">
+                    Minutes
+                  </Label>
                   <Input
                     id="bidTimeMinutes"
                     type="number"
                     min="0"
                     max="59"
                     value={sellForm.bidTimeInMinutes}
-                    onChange={(e) => setSellForm({...sellForm, bidTimeInMinutes: e.target.value})}
+                    onChange={(e) => setSellForm({ ...sellForm, bidTimeInMinutes: e.target.value })}
                     placeholder="0"
                   />
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={sellForm.description}
-                onChange={(e) => setSellForm({...sellForm, description: e.target.value})}
+                onChange={(e) => setSellForm({ ...sellForm, description: e.target.value })}
                 placeholder="Describe your NFT for potential buyers..."
                 rows={3}
               />
             </div>
-            
+
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => setShowSellDialog(false)}
-                disabled={selling}
-              >
+              <Button variant="outline" className="flex-1" onClick={() => setShowSellDialog(false)} disabled={selling}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
                 onClick={submitSale}
-                disabled={selling || !sellForm.minBid || !sellForm.description || (!sellForm.bidTimeInDays && !sellForm.bidTimeInMinutes)}
+                disabled={
+                  selling ||
+                  !sellForm.minBid ||
+                  !sellForm.description ||
+                  (!sellForm.bidTimeInDays && !sellForm.bidTimeInMinutes)
+                }
               >
-                {selling ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Gavel className="h-4 w-4 mr-2" />
-                )}
-                {selling ? 'Listing...' : 'Put on Sale'}
+                {selling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Gavel className="h-4 w-4 mr-2" />}
+                {selling ? "Listing..." : "Put on Sale"}
               </Button>
             </div>
           </div>
