@@ -365,26 +365,25 @@ serve(async (req) => {
       throw new Error(`Failed to get memory/personality data: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Step 3: Fetch and decrypt memory data from IPFS (graceful fallback)
+    // Step 3: Fetch and decrypt memory data from IPFS
     console.log('=== Step 3: Fetching and decrypting memory ===');
-    let memoryData: string = '';
+    let memoryData: string;
     
     try {
       console.log('Fetching memory data from IPFS with CID:', memoryCid);
       
       if (!memoryCid || memoryCid === '0x' || memoryCid.length < 10) {
-        console.warn('Invalid or empty memory CID from contract. Continuing with empty memory.');
-      } else {
-        memoryData = await fetchAndDecryptFromIPFS(memoryCid);
-        console.log('Memory data fetched and decrypted successfully');
-        console.log('Memory data length:', memoryData.length);
-        console.log('Memory data preview:', memoryData.substring(0, 100) + (memoryData.length > 100 ? '...' : ''));
+        throw new Error('Invalid or empty memory CID from contract');
       }
+      
+      memoryData = await fetchAndDecryptFromIPFS(memoryCid);
+      console.log('Memory data fetched and decrypted successfully');
+      console.log('Memory data length:', memoryData.length);
+      console.log('Memory data preview:', memoryData.substring(0, 100) + (memoryData.length > 100 ? '...' : ''));
         
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.warn('Memory fetch/decrypt failed. Proceeding with empty memory. Reason:', msg);
-      // proceed with empty memoryData
+      console.error('Error fetching memory data:', error);
+      throw new Error(`Failed to fetch/decrypt memory data: ${error.message}`);
     }
 
     // Step 4: Call Phala Network AI agent
