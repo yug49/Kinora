@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Gavel, Plus, Timer, Coins, User, Calendar, ThumbsUp, ThumbsDown, Loader2, RefreshCw } from 'lucide-react';
+import { Clock, Gavel, Plus, Timer, Coins, User, Calendar, Loader2, RefreshCw } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
 
@@ -22,7 +22,6 @@ const CINFT_ABI = [
   'function getTokenIdToImageUrl(uint256 _tokenId) public view returns (string memory)',
   'function name() public view returns (string memory)',
   'function balanceOf(address owner) public view returns (uint256)',
-  'function getRatingOfAToken(uint256 tokenId) public view returns (uint256 likes, uint256 dislikes)',
   'function approve(address to, uint256 tokenId) public'
 ];
 
@@ -46,8 +45,6 @@ interface MarketNFT {
   minBid: string;
   timeLeft: string;
   endTime: number;
-  likes: number;
-  dislikes: number;
 }
 
 interface UserNFT {
@@ -55,8 +52,6 @@ interface UserNFT {
   name: string;
   image: string;
   description: string;
-  likes: number;
-  dislikes: number;
   isOnSale?: boolean;
   minBid?: string;
   timeLeft?: string;
@@ -100,18 +95,6 @@ const NFTCard = ({ nft, type, onBid, onSell, onComplete }: NFTCardProps) => {
       
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {/* Likes and Dislikes for all types */}
-          <div className="flex justify-between items-center text-sm">
-            <div className="flex items-center gap-1 text-green-600">
-              <ThumbsUp className="h-3 w-3" />
-              <span>{nft.likes}</span>
-            </div>
-            <div className="flex items-center gap-1 text-red-600">
-              <ThumbsDown className="h-3 w-3" />
-              <span>{nft.dislikes}</span>
-            </div>
-          </div>
-          
           {type === 'market' && 'minBid' in nft ? (
             <>
               <div className="flex justify-between items-center text-sm">
@@ -222,16 +205,6 @@ export const Marketplace = () => {
               auctionContract.getNftsBidEndTime(tokenId)
             ]);
 
-            // Try to fetch ratings with fallback
-            let likes = 0, dislikes = 0;
-            try {
-              const ratings = await cinftContract.getRatingOfAToken(tokenId);
-              likes = Number(ratings[0]);
-              dislikes = Number(ratings[1]);
-            } catch (error) {
-              console.log('Rating not available for token', tokenId.toString());
-            }
-
             return {
               tokenId: tokenId.toString(),
               name: `CINFT #${tokenId.toString()}`,
@@ -239,9 +212,7 @@ export const Marketplace = () => {
               description,
               minBid: ethers.formatEther(minBid),
               timeLeft: formatTimeLeft(Number(endTime)),
-              endTime: Number(endTime),
-              likes,
-              dislikes
+              endTime: Number(endTime)
             };
           } catch (err) {
             console.error(`Error fetching data for token ${tokenId}:`, err);
@@ -303,16 +274,6 @@ export const Marketplace = () => {
             
             // Get NFT details from CINFT contract
             const imageUrl = await cinftContract.getTokenIdToImageUrl(tokenId);
-            
-            // Try to fetch ratings with fallback
-            let likes = 0, dislikes = 0;
-            try {
-              const ratings = await cinftContract.getRatingOfAToken(tokenId);
-              likes = Number(ratings[0]);
-              dislikes = Number(ratings[1]);
-            } catch (error) {
-              console.log('Rating not available for token', tokenId.toString());
-            }
 
             // Get auction details from auction contract
             const [minBid, endTime, description] = await Promise.all([
@@ -325,9 +286,7 @@ export const Marketplace = () => {
               imageUrl,
               minBid: ethers.formatEther(minBid),
               endTime: Number(endTime),
-              description,
-              likes,
-              dislikes
+              description
             });
 
             // Calculate time left
@@ -345,8 +304,6 @@ export const Marketplace = () => {
               minBid: ethers.formatEther(minBid),
               timeLeft,
               endTime: Number(endTime),
-              likes,
-              dislikes,
               isOnSale: true
             };
           } catch (error) {
@@ -427,21 +384,9 @@ export const Marketplace = () => {
           try {
             console.log('Fetching details for token', tokenId.toString());
             const imageUrl = await cinftContract.getTokenIdToImageUrl(tokenId);
-            
-            // Try to fetch ratings with fallback
-            let likes = 0, dislikes = 0;
-            try {
-              const ratings = await cinftContract.getRatingOfAToken(tokenId);
-              likes = Number(ratings[0]);
-              dislikes = Number(ratings[1]);
-            } catch (error) {
-              console.log('Rating not available for token', tokenId.toString());
-            }
 
             console.log('Token', tokenId.toString(), 'details:', {
-              imageUrl,
-              likes,
-              dislikes
+              imageUrl
             });
 
             return {
@@ -449,8 +394,6 @@ export const Marketplace = () => {
               name: `CINFT #${tokenId.toString()}`,
               image: imageUrl,
               description: `AI-generated NFT with unique personality and capabilities.`,
-              likes,
-              dislikes,
               isOnSale: false
             };
           } catch (err) {

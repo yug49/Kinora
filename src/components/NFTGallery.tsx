@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Brain, MessageCircle, Loader2, MoreVertical, Send, ThumbsUp, ThumbsDown, Star, Copy } from 'lucide-react';
+import { Brain, MessageCircle, Loader2, MoreVertical, Send, Copy } from 'lucide-react';
 import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
@@ -26,8 +26,6 @@ const CONTRACT_ABI = [
   'function registerEntry(string memory _memory) public returns (bytes32)',
   'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32)',
   'function transferFrom(address from, address to, uint256 tokenId) public',
-  'function rate(uint256 tokenId, bool isLike) public',
-  'function getRatingOfAToken(uint256 tokenId) public view returns (uint256 likes, uint256 dislikes)',
   'function getPromptsOnSale(uint256 tokenId) public view returns (bytes32[] memory)',
   'function getDescriptionAndPriceOfAPromptOnSale(bytes32 _promptId) public view returns (string memory, uint256)',
   'function purchasePrompt(bytes32 _promptId) payable public returns (string memory _prompt)'
@@ -37,8 +35,6 @@ interface NFT {
   id: string;
   name: string;
   image: string;
-  likes: number;
-  dislikes: number;
 }
 
 interface PromptOnSale {
@@ -57,9 +53,6 @@ export const NFTGallery = () => {
   const [transferring, setTransferring] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [transferTokenId, setTransferTokenId] = useState<string | null>(null);
-  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
-  const [ratingTokenId, setRatingTokenId] = useState<string | null>(null);
-  const [rating, setRating] = useState(false);
   const [promptsDialogOpen, setPromptsDialogOpen] = useState(false);
   const [promptsTokenId, setPromptsTokenId] = useState<string | null>(null);
   const [promptsOnSale, setPromptsOnSale] = useState<PromptOnSale[]>([]);
@@ -115,30 +108,16 @@ export const NFTGallery = () => {
         console.log('Token ID at index', i, ':', tokenId.toString());
       }
 
-      // Fetch image URLs and ratings for each token
+      // Fetch image URLs for each token
       const nftPromises = tokenIds.map(async (tokenId: any) => {
         console.log('Fetching image for token ID:', tokenId.toString());
         const imageUrl = await contract.getTokenIdToImageUrl(tokenId);
         console.log('Image URL for token', tokenId.toString(), ':', imageUrl);
         
-        // Fetch ratings for this token (with fallback if not supported)
-        let likes = 0;
-        let dislikes = 0;
-        try {
-          const ratings = await contract.getRatingOfAToken(tokenId);
-          likes = Number(ratings[0]);
-          dislikes = Number(ratings[1]);
-          console.log('Ratings for token', tokenId.toString(), '- Likes:', likes, 'Dislikes:', dislikes);
-        } catch (error) {
-          console.log('Rating not available for token', tokenId.toString(), '- using default values');
-        }
-        
         const nft = {
           id: tokenId.toString(),
           name: `CINFT #${tokenId.toString()}`,
-          image: imageUrl,
-          likes,
-          dislikes
+          image: imageUrl
         };
         console.log('Created NFT object:', nft);
         return nft;
@@ -223,53 +202,6 @@ export const NFTGallery = () => {
     e.stopPropagation();
     setTransferTokenId(tokenId);
     setTransferDialogOpen(true);
-  };
-
-  const openRatingDialog = (tokenId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setRatingTokenId(tokenId);
-    setRatingDialogOpen(true);
-  };
-
-  const handleRating = async (isLike: boolean) => {
-    if (!ratingTokenId || !account) return;
-
-    setRating(true);
-    try {
-      if (!window.ethereum) {
-        throw new Error('MetaMask not found');
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-      console.log('Submitting rating:', {
-        tokenId: ratingTokenId,
-        isLike
-      });
-
-      const tx = await contract.rate(BigInt(ratingTokenId), isLike);
-      console.log('Rating transaction sent:', tx.hash);
-
-      toast.success('Rating submitted! Waiting for confirmation...');
-      
-      await tx.wait();
-      console.log('Rating confirmed:', tx.hash);
-      
-      toast.success('Rating submitted successfully!');
-      
-      // Reset states and refresh NFTs
-      setRatingDialogOpen(false);
-      setRatingTokenId(null);
-      fetchUserNFTs();
-      
-    } catch (error) {
-      console.error('Rating failed:', error);
-      toast.error(error instanceof Error ? error.message : 'Rating failed');
-    } finally {
-      setRating(false);
-    }
   };
 
   const openPromptsDialog = async (tokenId: string, e: React.MouseEvent) => {
@@ -425,10 +357,6 @@ export const NFTGallery = () => {
                     <Send className="h-4 w-4 mr-2" />
                     Transfer NFT
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => openRatingDialog(nft.id, e)}>
-                    <Star className="h-4 w-4 mr-2" />
-                    Rate
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={(e) => openPromptsDialog(nft.id, e)}>
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Buy Exclusive Prompts
@@ -452,19 +380,9 @@ export const NFTGallery = () => {
                   AI
                 </Badge>
               </div>
-              <div className="flex justify-between items-center text-xs text-muted-foreground mb-3">
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
                 <span>Token ID</span>
                 <span>#{nft.id}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-1 text-green-600">
-                  <ThumbsUp className="h-4 w-4" />
-                  <span>{nft.likes}</span>
-                </div>
-                <div className="flex items-center gap-1 text-red-600">
-                  <ThumbsDown className="h-4 w-4" />
-                  <span>{nft.dislikes}</span>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -537,45 +455,6 @@ export const NFTGallery = () => {
                 )}
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rating Dialog */}
-      <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rate CINFT</DialogTitle>
-            <DialogDescription>
-              Rate CINFT #{ratingTokenId}. You can only rate once per minter.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-center space-x-4">
-            <Button 
-              onClick={() => handleRating(true)} 
-              disabled={rating}
-              className="flex items-center gap-2"
-            >
-              {rating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ThumbsUp className="h-4 w-4" />
-              )}
-              Like
-            </Button>
-            <Button 
-              onClick={() => handleRating(false)} 
-              disabled={rating}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              {rating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ThumbsDown className="h-4 w-4" />
-              )}
-              Dislike
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
