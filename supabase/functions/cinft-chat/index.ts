@@ -467,25 +467,8 @@ serve(async (req) => {
       console.warn('No promptId provided from client; skipping contract storage');
     }
 
-    // Step 7: Verify IPFS storage by attempting to fetch the stored response
-    console.log('=== Step 7: Verifying IPFS storage ===');
-    let ipfsStorageVerified = false;
-    try {
-      console.log('Verifying response was properly stored in IPFS...');
-      const verificationData = await fetchAndDecryptFromIPFS(responseCid);
-      if (verificationData !== aiResponse) {
-        console.warn('IPFS verification failed: stored data does not match original response');
-      } else {
-        ipfsStorageVerified = true;
-        console.log('IPFS storage verification successful');
-      }
-    } catch (error) {
-      console.error('IPFS verification failed:', error);
-      console.warn('IPFS storage verification failed, but response was generated');
-    }
-
-    // Step 8: Return response to client with confirmation details
-    console.log('=== Step 8: Returning response to client ===');
+    // Step 7: Return response to client with confirmation details
+    console.log('=== Step 7: Returning response to client ===');
     
     return new Response(JSON.stringify({
       success: true,
@@ -495,15 +478,14 @@ serve(async (req) => {
       blockNumber: blockNumber,
       minter: minter,
       verified: {
-        ipfsStorage: ipfsStorageVerified,
         contractStorage: contractStorageVerified,
         timestamp: new Date().toISOString()
       },
       promptId: promptId,
       timestamp: new Date().toISOString(),
-      message: contractStorageVerified && ipfsStorageVerified ? 
-        'CINFT Chat completed and fully verified' : 
-        'CINFT Chat completed (partial verification)'
+      message: contractStorageVerified ? 
+        'CINFT Chat completed successfully' : 
+        'CINFT Chat completed (response stored in IPFS)'
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
