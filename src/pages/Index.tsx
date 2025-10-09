@@ -9,6 +9,7 @@ import { JournalEntries } from '@/components/JournalEntries';
 import { PromptsMonitor } from '@/components/PromptsMonitor';
 import { PromptListing } from '@/components/PromptListing';
 import { Marketplace } from '@/components/Marketplace';
+import { Legacy } from '@/components/Legacy';
 import { Sparkles, Images, BookOpen, Monitor, ShoppingBag, Store, Archive } from 'lucide-react';
 
 const Index = () => {
@@ -111,22 +112,7 @@ const Index = () => {
           
           <TabsContent value="legacy" className="space-y-8">
             <div className="max-w-4xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Archive className="h-6 w-6 text-primary" />
-                    Legacy System
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center py-12">
-                  <div className="space-y-4">
-                    <h3 className="text-2xl font-bold text-primary">Coming Soon in Session 6</h3>
-                    <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                      A system where users can pre-set nominees and must ping the servers once a year. If they don't ping, their nominees will receive their CINFTs and any money left by the user, as they are considered deceased.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <Legacy />
             </div>
           </TabsContent>
         </Tabs>

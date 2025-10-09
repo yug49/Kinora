@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Brain, MessageCircle, Loader2, MoreVertical, Send, Copy } from 'lucide-react';
+import { Brain, MessageCircle, Loader2, MoreVertical, Send, Copy, Archive } from 'lucide-react';
 import { AIChatModal } from './AIChatModal';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
@@ -26,10 +26,13 @@ const CONTRACT_ABI = [
   'function registerEntry(string memory _memory) public returns (bytes32)',
   'function submitPrompt(uint256 _tokenId, string memory _prompt) public returns (bytes32)',
   'function transferFrom(address from, address to, uint256 tokenId) public',
+  'function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external',
   'function getPromptsOnSale(uint256 tokenId) public view returns (bytes32[] memory)',
   'function getDescriptionAndPriceOfAPromptOnSale(bytes32 _promptId) public view returns (string memory, uint256)',
   'function purchasePrompt(bytes32 _promptId) payable public returns (string memory _prompt)'
 ];
+
+const LEGACY_CONTRACT_ADDRESS = '0xD704a953D33AD97435e35AB18b9b60961E7f230a';
 
 interface NFT {
   id: string;
@@ -59,6 +62,10 @@ export const NFTGallery = () => {
   const [selectedPrompt, setSelectedPrompt] = useState<PromptOnSale | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [purchasedPrompt, setPurchasedPrompt] = useState<string | null>(null);
+  const [legacyDialogOpen, setLegacyDialogOpen] = useState(false);
+  const [legacyTokenId, setLegacyTokenId] = useState<string | null>(null);
+  const [nomineeAddress, setNomineeAddress] = useState('');
+  const [sendingToLegacy, setSendingToLegacy] = useState(false);
 
   const fetchUserNFTs = async () => {
     console.log('=== NFT Fetch Debug ===');
@@ -289,6 +296,71 @@ export const NFTGallery = () => {
     toast.success('Copied to clipboard!');
   };
 
+  const openLegacyDialog = (tokenId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLegacyTokenId(tokenId);
+    setLegacyDialogOpen(true);
+  };
+
+  const handleSendToLegacy = async () => {
+    if (!legacyTokenId || !nomineeAddress || !account) return;
+
+    setSendingToLegacy(true);
+    try {
+      if (!window.ethereum) {
+        throw new Error('MetaMask not found');
+      }
+
+      // Validate nominee address format
+      if (!ethers.isAddress(nomineeAddress)) {
+        throw new Error('Invalid nominee address format');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      // Encode the nominee address using AbiCoder
+      const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+      const encodedData = abiCoder.encode(['address'], [nomineeAddress]);
+
+      console.log('Sending to Legacy System:', {
+        from: account,
+        to: LEGACY_CONTRACT_ADDRESS,
+        tokenId: legacyTokenId,
+        nomineeAddress,
+        encodedData
+      });
+
+      const tx = await contract['safeTransferFrom(address,address,uint256,bytes)'](
+        account,
+        LEGACY_CONTRACT_ADDRESS,
+        BigInt(legacyTokenId),
+        encodedData
+      );
+      console.log('Legacy transfer transaction sent:', tx.hash);
+
+      toast.success('Transfer initiated! Waiting for confirmation...');
+
+      await tx.wait();
+      console.log('Legacy transfer confirmed:', tx.hash);
+
+      toast.success('NFT successfully sent to Legacy System!');
+
+      // Reset states and refresh NFTs
+      setLegacyDialogOpen(false);
+      setNomineeAddress('');
+      setLegacyTokenId(null);
+      fetchUserNFTs();
+
+    } catch (error) {
+      console.error('Legacy transfer failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Legacy transfer failed');
+    } finally {
+      setSendingToLegacy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -360,6 +432,10 @@ export const NFTGallery = () => {
                   <DropdownMenuItem onClick={(e) => openPromptsDialog(nft.id, e)}>
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Buy Exclusive Prompts
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => openLegacyDialog(nft.id, e)}>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Send to Legacy System
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -558,6 +634,63 @@ export const NFTGallery = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Legacy System Dialog */}
+      <Dialog open={legacyDialogOpen} onOpenChange={setLegacyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send to Legacy System</DialogTitle>
+            <DialogDescription>
+              Enter your nominee's address. If you don't ping within 365 days + 4 hours, they will receive CINFT #{legacyTokenId}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="nomineeAddress">Nominee Address</Label>
+              <Input
+                id="nomineeAddress"
+                type="text"
+                placeholder="0x..."
+                value={nomineeAddress}
+                onChange={(e) => setNomineeAddress(e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This address will receive your NFT if you don't ping the system within one year.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setLegacyDialogOpen(false);
+                  setNomineeAddress('');
+                  setLegacyTokenId(null);
+                }}
+                disabled={sendingToLegacy}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendToLegacy}
+                disabled={!nomineeAddress || sendingToLegacy}
+              >
+                {sendingToLegacy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Send to Legacy
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
