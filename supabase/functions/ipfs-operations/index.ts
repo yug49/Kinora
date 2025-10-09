@@ -168,32 +168,52 @@ serve(async (req) => {
       
       console.log('Cache miss, fetching from IPFS...');
       
-      // Step 1: Use Pinata's gateway to fetch the encrypted content
-      const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
-      
-      console.log('Attempting to fetch from gateway:', gatewayUrl);
-      const fetchResponse = await fetch(gatewayUrl);
-      
-      console.log('Gateway response status:', fetchResponse.status);
-      console.log('Gateway response headers:', Object.fromEntries(fetchResponse.headers.entries()));
-      
-      if (!fetchResponse.ok) {
-        const errorBody = await fetchResponse.text();
-        console.error('Failed to fetch from IPFS:', fetchResponse.status);
-        console.error('Error response body:', errorBody);
-        console.error('Error response headers:', Object.fromEntries(fetchResponse.headers.entries()));
-        
-        // Provide more specific error messages
-        if (fetchResponse.status === 429) {
-          throw new Error(`Rate limit exceeded from Pinata gateway. Please try again in a few moments.`);
-        } else if (fetchResponse.status === 404) {
-          throw new Error(`Content not found on IPFS with CID: ${cid}`);
+      // Step 1: Try multiple gateways with lightweight retry to avoid single-provider rate limits
+      const gateways = [
+        `https://gateway.pinata.cloud/ipfs/${cid}`,
+        `https://ipfs.io/ipfs/${cid}`,
+        `https://cloudflare-ipfs.com/ipfs/${cid}`,
+        `https://dweb.link/ipfs/${cid}`,
+      ];
+
+      let encryptedContentText: string | null = null;
+      let lastStatus: number | undefined = undefined;
+      let lastBody: string = '';
+
+      for (let i = 0; i < gateways.length; i++) {
+        const url = gateways[i];
+        console.log('Attempting to fetch from gateway:', url);
+        const res = await fetch(url);
+        console.log('Gateway response status:', res.status);
+
+        if (res.ok) {
+          encryptedContentText = await res.text();
+          console.log('Fetched encrypted content length:', encryptedContentText.length, 'from', url);
+          break;
         } else {
-          throw new Error(`Failed to fetch from IPFS: ${fetchResponse.status} - ${errorBody}`);
+          lastStatus = res.status;
+          try { lastBody = await res.text(); } catch { lastBody = ''; }
+          console.error('Failed to fetch from IPFS:', res.status, 'gateway:', url);
+
+          // Provide more specific error messages
+          if (res.status === 404) {
+            throw new Error(`Content not found on IPFS with CID: ${cid}`);
+          }
+
+          // Backoff a bit before trying next gateway (helps on transient 429/5xx)
+          await new Promise((r) => setTimeout(r, 200 * (i + 1)));
+          continue;
         }
       }
 
-      const encryptedContent = await fetchResponse.text();
+      if (!encryptedContentText) {
+        if (lastStatus === 429) {
+          throw new Error(`Rate limit encountered from IPFS gateways. Please try again shortly.`);
+        }
+        throw new Error(`Failed to fetch from IPFS gateways. Last status: ${lastStatus} - ${lastBody?.slice(0, 200)}`);
+      }
+
+      const encryptedContent = encryptedContentText;
       console.log('Fetched encrypted content length:', encryptedContent.length);
 
       // Step 2: Decrypt the content using AES crypto function
