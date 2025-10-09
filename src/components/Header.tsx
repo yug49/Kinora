@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import kinoraLogo from '@/assets/kinora-logo.png';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,13 +33,11 @@ export const Header = () => {
       <div className="container mx-auto flex h-20 items-center justify-between px-6">
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow">
-            <span className="text-lg font-bold text-primary-foreground">CI</span>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Confidential Intelligence</h1>
-            <p className="text-sm text-muted-foreground">AI-Powered NFTs</p>
-          </div>
+          <img 
+            src={kinoraLogo} 
+            alt="Kinora Logo" 
+            className="h-12 w-auto"
+          />
         </div>
 
         {/* Network Warning */}

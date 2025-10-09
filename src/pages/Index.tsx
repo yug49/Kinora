@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import kinoraCover from '@/assets/kinora-cover.png';
 import { Header } from '@/components/Header';
 import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
@@ -20,10 +21,19 @@ const Index = () => {
       
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-hero border-b border-border/50">
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url(${kinoraCover})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5" />
-        <div className="container mx-auto px-6 py-16 text-center">
+        <div className="container mx-auto px-6 py-16 text-center relative z-10">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
-            Confidential Intelligence
+            Kinora
             <span className="block text-2xl md:text-3xl text-primary mt-2">
               AI-Powered NFTs
             </span>
