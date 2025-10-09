@@ -33,11 +33,11 @@ const Index = () => {
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             Kinora
             <span className="block text-2xl md:text-3xl text-primary mt-2">
-              AI-Powered NFTs
+              Tokenize your souls
             </span>
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Mint and interact with intelligent NFTs that have memory, personality, and the ability to learn and evolve.
+            Mint and interact with Kinora NFTs that have memory, personality, and the ability to learn and evolve.
           </p>
         </div>
       </div>
