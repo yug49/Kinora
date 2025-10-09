@@ -215,13 +215,22 @@ export const Marketplace = () => {
       const nftsData = await Promise.all(
         tokenIds.map(async (tokenId: bigint) => {
           try {
-            const [imageUrl, description, minBid, endTime, ratings] = await Promise.all([
+            const [imageUrl, description, minBid, endTime] = await Promise.all([
               cinftContract.getTokenIdToImageUrl(tokenId),
               auctionContract.getDescription(tokenId),
               auctionContract.getMinBid(tokenId),
-              auctionContract.getNftsBidEndTime(tokenId),
-              cinftContract.getRatingOfAToken(tokenId)
+              auctionContract.getNftsBidEndTime(tokenId)
             ]);
+
+            // Try to fetch ratings with fallback
+            let likes = 0, dislikes = 0;
+            try {
+              const ratings = await cinftContract.getRatingOfAToken(tokenId);
+              likes = Number(ratings[0]);
+              dislikes = Number(ratings[1]);
+            } catch (error) {
+              console.log('Rating not available for token', tokenId.toString());
+            }
 
             return {
               tokenId: tokenId.toString(),
@@ -231,8 +240,8 @@ export const Marketplace = () => {
               minBid: ethers.formatEther(minBid),
               timeLeft: formatTimeLeft(Number(endTime)),
               endTime: Number(endTime),
-              likes: Number(ratings[0]),
-              dislikes: Number(ratings[1])
+              likes,
+              dislikes
             };
           } catch (err) {
             console.error(`Error fetching data for token ${tokenId}:`, err);
@@ -293,10 +302,17 @@ export const Marketplace = () => {
             console.log('Fetching details for token on sale:', tokenId.toString());
             
             // Get NFT details from CINFT contract
-            const [imageUrl, ratings] = await Promise.all([
-              cinftContract.getTokenIdToImageUrl(tokenId),
-              cinftContract.getRatingOfAToken(tokenId)
-            ]);
+            const imageUrl = await cinftContract.getTokenIdToImageUrl(tokenId);
+            
+            // Try to fetch ratings with fallback
+            let likes = 0, dislikes = 0;
+            try {
+              const ratings = await cinftContract.getRatingOfAToken(tokenId);
+              likes = Number(ratings[0]);
+              dislikes = Number(ratings[1]);
+            } catch (error) {
+              console.log('Rating not available for token', tokenId.toString());
+            }
 
             // Get auction details from auction contract
             const [minBid, endTime, description] = await Promise.all([
@@ -310,8 +326,8 @@ export const Marketplace = () => {
               minBid: ethers.formatEther(minBid),
               endTime: Number(endTime),
               description,
-              likes: Number(ratings[0]),
-              dislikes: Number(ratings[1])
+              likes,
+              dislikes
             });
 
             // Calculate time left
@@ -329,8 +345,8 @@ export const Marketplace = () => {
               minBid: ethers.formatEther(minBid),
               timeLeft,
               endTime: Number(endTime),
-              likes: Number(ratings[0]),
-              dislikes: Number(ratings[1]),
+              likes,
+              dislikes,
               isOnSale: true
             };
           } catch (error) {
@@ -410,15 +426,22 @@ export const Marketplace = () => {
         tokenIds.map(async (tokenId: bigint) => {
           try {
             console.log('Fetching details for token', tokenId.toString());
-            const [imageUrl, ratings] = await Promise.all([
-              cinftContract.getTokenIdToImageUrl(tokenId),
-              cinftContract.getRatingOfAToken(tokenId)
-            ]);
+            const imageUrl = await cinftContract.getTokenIdToImageUrl(tokenId);
+            
+            // Try to fetch ratings with fallback
+            let likes = 0, dislikes = 0;
+            try {
+              const ratings = await cinftContract.getRatingOfAToken(tokenId);
+              likes = Number(ratings[0]);
+              dislikes = Number(ratings[1]);
+            } catch (error) {
+              console.log('Rating not available for token', tokenId.toString());
+            }
 
             console.log('Token', tokenId.toString(), 'details:', {
               imageUrl,
-              likes: Number(ratings[0]),
-              dislikes: Number(ratings[1])
+              likes,
+              dislikes
             });
 
             return {
@@ -426,8 +449,8 @@ export const Marketplace = () => {
               name: `CINFT #${tokenId.toString()}`,
               image: imageUrl,
               description: `AI-generated NFT with unique personality and capabilities.`,
-              likes: Number(ratings[0]),
-              dislikes: Number(ratings[1]),
+              likes,
+              dislikes,
               isOnSale: false
             };
           } catch (err) {

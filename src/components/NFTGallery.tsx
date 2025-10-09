@@ -121,16 +121,24 @@ export const NFTGallery = () => {
         const imageUrl = await contract.getTokenIdToImageUrl(tokenId);
         console.log('Image URL for token', tokenId.toString(), ':', imageUrl);
         
-        // Fetch ratings for this token
-        const [likes, dislikes] = await contract.getRatingOfAToken(tokenId);
-        console.log('Ratings for token', tokenId.toString(), '- Likes:', likes.toString(), 'Dislikes:', dislikes.toString());
+        // Fetch ratings for this token (with fallback if not supported)
+        let likes = 0;
+        let dislikes = 0;
+        try {
+          const ratings = await contract.getRatingOfAToken(tokenId);
+          likes = Number(ratings[0]);
+          dislikes = Number(ratings[1]);
+          console.log('Ratings for token', tokenId.toString(), '- Likes:', likes, 'Dislikes:', dislikes);
+        } catch (error) {
+          console.log('Rating not available for token', tokenId.toString(), '- using default values');
+        }
         
         const nft = {
           id: tokenId.toString(),
           name: `CINFT #${tokenId.toString()}`,
           image: imageUrl,
-          likes: Number(likes),
-          dislikes: Number(dislikes)
+          likes,
+          dislikes
         };
         console.log('Created NFT object:', nft);
         return nft;
