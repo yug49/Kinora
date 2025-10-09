@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ethers } from 'ethers';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -112,11 +112,8 @@ export const MintingForm = () => {
       <CardHeader className="text-center">
         <CardTitle className="flex items-center justify-center gap-2 text-2xl">
           <Sparkles className="h-6 w-6 text-primary" />
-          Mint Your AI NFT
+          Mint your Kinora NFT
         </CardTitle>
-        <CardDescription>
-          Create a new Confidential Intelligent NFT
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Mint To Selection */}
@@ -180,7 +177,7 @@ export const MintingForm = () => {
           className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300 text-lg py-6"
         >
           <Sparkles className="mr-2 h-5 w-5" />
-          {isMinting ? 'Minting...' : 'Mint AI NFT'}
+          {isMinting ? 'Minting...' : 'Mint Kinora NFT'}
         </Button>
 
         {!isConnected && (
