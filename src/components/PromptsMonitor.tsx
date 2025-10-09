@@ -187,14 +187,65 @@ export const PromptsMonitor = () => {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
+
+      // Ensure correct network
+      const network = await provider.getNetwork();
+      const tenChainId = parseInt(TEN_CHAIN_ID, 16);
+      if (Number(network.chainId) !== tenChainId) {
+        toast({
+          title: "Wrong network",
+          description: "Please switch to the TEN network and try again",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Ensure contract exists at address on this network
+      const code = await provider.getCode(CONTRACT_ADDRESS);
+      if (!code || code === '0x') {
+        toast({
+          title: "Contract not found",
+          description: `No contract at ${CONTRACT_ADDRESS} on this network`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
       const priceInWei = ethers.parseEther(listingPrice);
+
+      if (listingDescription.length > 256) {
+        toast({
+          title: "Description too long",
+          description: "Max 256 characters",
+          variant: "destructive",
+        });
+        return;
+      }
       
       toast({
         title: "Listing prompt...",
         description: "Please confirm the transaction in MetaMask",
       });
+
+      // Try gas estimation to surface clearer errors before sending
+      try {
+        await (contract as any).estimateGas.listPromptOnMarket(
+          selectedPrompt.promptId,
+          priceInWei,
+          listingDescription
+        );
+      } catch (estErr: any) {
+        console.error('Gas estimation failed:', estErr);
+        let msg = 'Transaction likely to fail. Check ownership and parameters.';
+        if (estErr?.reason) msg = estErr.reason;
+        if (typeof estErr?.message === 'string' && estErr.message.includes('execution reverted')) {
+          msg = 'Execution reverted. You may not own this prompt or it may already be listed.';
+        }
+        toast({ title: 'Cannot send transaction', description: msg, variant: 'destructive' });
+        return;
+      }
       
       const tx = await contract.listPromptOnMarket(
         selectedPrompt.promptId,
@@ -226,6 +277,8 @@ export const PromptsMonitor = () => {
         errorMessage = "Transaction was cancelled";
       } else if (error.message?.includes('execution reverted')) {
         errorMessage = "Transaction failed: You may not own this prompt or it may already be listed";
+      } else if (error?.info?.error?.message) {
+        errorMessage = error.info.error.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -457,7 +510,7 @@ export const PromptsMonitor = () => {
             <div className="space-y-2">
               {promptIds.map((promptId, index) => (
                 <div
-                  key={promptId}
+                  key={`${promptId}-${index}`}
                   className="p-3 rounded-lg border bg-background/50 hover:bg-background/80 cursor-pointer transition-colors"
                   onClick={() => fetchPromptDetails(promptId)}
                 >
