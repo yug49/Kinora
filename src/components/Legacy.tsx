@@ -211,7 +211,7 @@ export const Legacy = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
-                      <span>If you don't ping in time, your nominee will receive your NFTs and assets</span>
+                      <span>If you don't ping in time, your nominee will receive your Kinora NFT as a token of remembrance</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">•</span>
