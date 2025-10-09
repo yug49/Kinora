@@ -174,6 +174,16 @@ export const PromptsMonitor = () => {
       return;
     }
 
+    // Check if the connected account is the owner
+    if (selectedPrompt.owner.toLowerCase() !== account.toLowerCase()) {
+      toast({
+        title: "Error",
+        description: "Only the prompt owner can list it on the market",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -181,11 +191,21 @@ export const PromptsMonitor = () => {
       
       const priceInWei = ethers.parseEther(listingPrice);
       
+      toast({
+        title: "Listing prompt...",
+        description: "Please confirm the transaction in MetaMask",
+      });
+      
       const tx = await contract.listPromptOnMarket(
         selectedPrompt.promptId,
         priceInWei,
         listingDescription
       );
+      
+      toast({
+        title: "Transaction sent",
+        description: "Waiting for confirmation...",
+      });
       
       await tx.wait();
       
@@ -199,9 +219,20 @@ export const PromptsMonitor = () => {
       setListingPrice('');
     } catch (error: any) {
       console.error('Error listing prompt:', error);
+      
+      let errorMessage = "Failed to list prompt";
+      
+      if (error.code === 'ACTION_REJECTED' || error.message?.includes('user rejected')) {
+        errorMessage = "Transaction was cancelled";
+      } else if (error.message?.includes('execution reverted')) {
+        errorMessage = "Transaction failed: You may not own this prompt or it may already be listed";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to list prompt",
+        description: errorMessage,
         variant: "destructive",
       });
     }
