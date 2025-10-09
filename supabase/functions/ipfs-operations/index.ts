@@ -168,9 +168,10 @@ serve(async (req) => {
       
       console.log('Cache miss, fetching from IPFS...');
       
-      // Step 1: Try multiple gateways with lightweight retry to avoid single-provider rate limits
+      // Step 1: Try multiple gateways, prioritizing dedicated Pinata gateway for immediate access
       const gateways = [
-        `https://gateway.pinata.cloud/ipfs/${cid}`,
+        `https://blush-efficient-cow-673.mypinata.cloud/ipfs/${cid}`, // Dedicated Pinata gateway (immediate access)
+        `https://gateway.pinata.cloud/ipfs/${cid}`, // Public Pinata gateway
         `https://ipfs.io/ipfs/${cid}`,
         `https://cloudflare-ipfs.com/ipfs/${cid}`,
         `https://dweb.link/ipfs/${cid}`,
