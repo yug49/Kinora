@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import kinoraLogo from '@/assets/kinora-logo.png';
+import kinoraLogo from '@/assets/kinora-logo-new.png';
 import {
   DropdownMenu,
   DropdownMenuContent,
