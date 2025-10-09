@@ -13,8 +13,8 @@ import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
 
 // Contract addresses
-const CINFT_CONTRACT_ADDRESS = '0x35392F4D2859bA37bE04F32082E5f83caE29C1C1';
-const AUCTION_CONTRACT_ADDRESS = '0x5A4ec10C4bF95b25eff7083C4240dE757417063a';
+const CINFT_CONTRACT_ADDRESS = '0x0dc28A9b5503981C39e22d06A1ace2A9A30fc1C9';
+const AUCTION_CONTRACT_ADDRESS = '0x08B90f0C20878Bc6251468fFf7beAb3b3C28F0C4';
 
 // Contract ABIs
 const CINFT_ABI = [
