@@ -6,13 +6,10 @@ import { Header } from '@/components/Header';
 import { MintingForm } from '@/components/MintingForm';
 import { NFTGallery } from '@/components/NFTGallery';
 import { JournalEntries } from '@/components/JournalEntries';
-import { PhalaChat } from '@/components/PhalaChat';
-import { IPFSTest } from '@/components/IPFSTest';
-import { AESCrypto } from '@/components/AESCrypto';
 import { PromptsMonitor } from '@/components/PromptsMonitor';
 import { PromptListing } from '@/components/PromptListing';
 import { Marketplace } from '@/components/Marketplace';
-import { Sparkles, Images, BookOpen, MessageSquare, Database, Shield, Monitor, ShoppingBag, Store, Archive } from 'lucide-react';
+import { Sparkles, Images, BookOpen, Monitor, ShoppingBag, Store, Archive } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -47,10 +44,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
         <Tabs defaultValue="mint" className="w-full">
-          {/* Main Application Tabs */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-foreground mb-4 text-center">Main Application</h2>
-            <TabsList className="grid w-full grid-cols-7 max-w-6xl mx-auto mb-6">
+          <TabsList className="grid w-full grid-cols-7 max-w-6xl mx-auto mb-6">
               <TabsTrigger value="mint" className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
                 Mint NFT
@@ -80,41 +74,6 @@ const Index = () => {
                 Legacy
               </TabsTrigger>
             </TabsList>
-          </div>
-
-          {/* Testing/Development Tabs */}
-          <div className="mb-8">
-            <h2 className="text-lg font-medium text-muted-foreground mb-4 text-center">
-              Testing & Development 
-              <span className="block text-sm text-destructive mt-1">
-                (Development only - will be removed in production)
-              </span>
-            </h2>
-            <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto mb-6 border-2 border-dashed border-muted-foreground/30">
-              <TabsTrigger value="chat" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                AI Chat
-              </TabsTrigger>
-              <TabsTrigger value="ipfs" className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                IPFS Test
-              </TabsTrigger>
-              <TabsTrigger value="crypto" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Encryption Test
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="chat" className="space-y-8">
-            <div className="max-w-4xl mx-auto">
-              <PhalaChat />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="ipfs" className="space-y-8">
-            <IPFSTest />
-          </TabsContent>
           
           <TabsContent value="mint" className="space-y-8">
             <div className="max-w-2xl mx-auto">
@@ -168,12 +127,6 @@ const Index = () => {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="crypto" className="space-y-8">
-            <div className="max-w-6xl mx-auto">
-              <AESCrypto />
             </div>
           </TabsContent>
         </Tabs>
