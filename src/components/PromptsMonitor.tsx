@@ -413,21 +413,6 @@ export const PromptsMonitor = () => {
                 </div>
               )}
 
-              {/* Actual Response Content */}
-              {selectedPrompt.actualResponse && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-accent" />
-                    <span className="font-medium">AI Response</span>
-                    <Badge variant="secondary">CINFT</Badge>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-4 border">
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown>{selectedPrompt.actualResponse}</ReactMarkdown>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {!selectedPrompt.responseCid && !selectedPrompt.actualResponse && (
                 <div className="text-center py-4">
