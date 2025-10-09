@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CONTRACT_ADDRESS = '0x0dc28A9b5503981C39e22d06A1ace2A9A30fc1C9';
+const CONTRACT_ADDRESS = '0x6aCA5cdC9Ea78a02D90D9634FAe87945931d7ffb';
 const CONTRACT_ABI = [
   'function getMemory() public view returns (string memory, tuple(uint32 openness, uint32 conscientiousness, uint32 extraversion, uint32 agreeableness, uint32 neuroticism, uint32 achievement, uint32 compassion, uint32 creativity, uint32 security, uint32 adventure, uint32 knowledge, uint32 autonomy, uint32 community, uint32 skillsHobbiesFrequency, uint32 interestsKnowledgeFrequency, uint32 keyEntitiesFrequency))',
 ];

@@ -9,7 +9,7 @@ import { Sparkles, User, Link } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from '@/hooks/use-toast';
 
-const CONTRACT_ADDRESS = '0x0dc28A9b5503981C39e22d06A1ace2A9A30fc1C9';
+const CONTRACT_ADDRESS = '0x6aCA5cdC9Ea78a02D90D9634FAe87945931d7ffb';
 
 const CONTRACT_ABI = [
   'function mint(string memory _imageUrl) public',
