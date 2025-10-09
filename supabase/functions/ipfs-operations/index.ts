@@ -16,6 +16,38 @@ interface PinataUploadResponse {
   group_id?: string;
 }
 
+// Simple in-memory cache with TTL
+interface CacheEntry {
+  data: string;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getCached(cid: string): string | null {
+  const entry = cache.get(cid);
+  if (!entry) return null;
+  
+  const age = Date.now() - entry.timestamp;
+  if (age > CACHE_TTL_MS) {
+    console.log(`Cache expired for CID: ${cid} (age: ${Math.round(age / 1000)}s)`);
+    cache.delete(cid);
+    return null;
+  }
+  
+  console.log(`Cache hit for CID: ${cid} (age: ${Math.round(age / 1000)}s)`);
+  return entry.data;
+}
+
+function setCache(cid: string, data: string): void {
+  cache.set(cid, {
+    data,
+    timestamp: Date.now()
+  });
+  console.log(`Cached data for CID: ${cid}`);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -116,20 +148,56 @@ serve(async (req) => {
     if (operation === 'fetch') {
       console.log('Fetching encrypted data from IPFS with CID:', cid);
       
+      // Check cache first
+      const cachedData = getCached(cid);
+      if (cachedData) {
+        console.log('Returning cached data for CID:', cid);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            content: cachedData,
+            cid: cid,
+            cached: true
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+      
+      console.log('Cache miss, fetching from IPFS...');
+      
       // Step 1: Use Pinata's gateway to fetch the encrypted content
       const gatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
       
+      console.log('Attempting to fetch from gateway:', gatewayUrl);
       const fetchResponse = await fetch(gatewayUrl);
       
+      console.log('Gateway response status:', fetchResponse.status);
+      console.log('Gateway response headers:', Object.fromEntries(fetchResponse.headers.entries()));
+      
       if (!fetchResponse.ok) {
+        const errorBody = await fetchResponse.text();
         console.error('Failed to fetch from IPFS:', fetchResponse.status);
-        throw new Error(`Failed to fetch: ${fetchResponse.status}`);
+        console.error('Error response body:', errorBody);
+        console.error('Error response headers:', Object.fromEntries(fetchResponse.headers.entries()));
+        
+        // Provide more specific error messages
+        if (fetchResponse.status === 429) {
+          throw new Error(`Rate limit exceeded from Pinata gateway. Please try again in a few moments.`);
+        } else if (fetchResponse.status === 404) {
+          throw new Error(`Content not found on IPFS with CID: ${cid}`);
+        } else {
+          throw new Error(`Failed to fetch from IPFS: ${fetchResponse.status} - ${errorBody}`);
+        }
       }
 
       const encryptedContent = await fetchResponse.text();
       console.log('Fetched encrypted content length:', encryptedContent.length);
 
       // Step 2: Decrypt the content using AES crypto function
+      console.log('Attempting to decrypt content...');
       const decryptResponse = await fetch('https://kxombsamuzjwegdhwdve.supabase.co/functions/v1/aes-crypto', {
         method: 'POST',
         headers: {
@@ -157,11 +225,15 @@ serve(async (req) => {
       const content = decryptResult.result;
       console.log('Data decrypted successfully, encrypted length:', decryptResult.encryptedLength, 'decrypted length:', decryptResult.decryptedLength);
 
+      // Cache the decrypted content
+      setCache(cid, content);
+
       return new Response(
         JSON.stringify({
           success: true,
           content: content,
-          cid: cid
+          cid: cid,
+          cached: false
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

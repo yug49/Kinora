@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Send, Brain, Bot, User, Loader2 } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface NFT {
   id: string;
@@ -154,13 +155,26 @@ export const AIChatModal = ({ nft, isOpen, onClose }: AIChatModalProps) => {
       console.error('=== CINFT Chat Process Failed ===');
       console.error('Error details:', error);
       
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      setError(errorMessage);
+      let errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       
-      // If it's a user rejection, don't show as error
-      if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
-        setError('Transaction was cancelled by user');
+      // Provide user-friendly error messages for common issues
+      if (errorMessage.includes('Rate limit exceeded') || errorMessage.includes('429')) {
+        errorMessage = 'The AI service is temporarily busy. Please wait a moment and try again.';
+        toast.error(errorMessage);
+      } else if (errorMessage.includes('user rejected') || errorMessage.includes('User denied')) {
+        errorMessage = 'Transaction was cancelled by user';
+        toast.info(errorMessage);
+      } else if (errorMessage.includes('IPFS') || errorMessage.includes('fetch failed')) {
+        errorMessage = `Storage error: ${errorMessage}. Please try again.`;
+        toast.error(errorMessage);
+      } else if (errorMessage.includes('Content not found') || errorMessage.includes('404')) {
+        errorMessage = 'No previous memories found for this NFT. This is normal for new NFTs.';
+        toast.info(errorMessage);
+      } else {
+        toast.error(errorMessage);
       }
+      
+      setError(errorMessage);
     } finally {
       setIsProcessing(false);
       setProcessingStep('');
