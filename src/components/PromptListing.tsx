@@ -108,11 +108,8 @@ export const PromptListing = () => {
       setUserListings(listings);
     } catch (error: any) {
       console.error('Error fetching user listings:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch listings",
-        variant: "destructive",
-      });
+      // Silently fail - feature not available for demo
+      setUserListings([]);
     } finally {
       setIsLoading(false);
     }
@@ -171,11 +168,8 @@ export const PromptListing = () => {
       setSearchResults(listings);
     } catch (error: any) {
       console.error('Error searching:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Search failed",
-        variant: "destructive",
-      });
+      // Silently fail - feature not available for demo
+      setSearchResults([]);
     } finally {
       setIsLoading(false);
     }
