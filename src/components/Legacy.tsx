@@ -32,7 +32,8 @@ export const Legacy = () => {
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(LEGACY_CONTRACT_ADDRESS, LEGACY_ABI, provider);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(LEGACY_CONTRACT_ADDRESS, LEGACY_ABI, signer);
 
       const timestamp = await contract.getLastPingedTimeStamp();
       setLastPingTime(Number(timestamp));
